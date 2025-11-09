@@ -4,6 +4,7 @@ import { Link } from 'expo-router';
 import {
   ActivityIndicator,
   Animated,
+  Image,
   Modal,
   PanResponder,
   Pressable,
@@ -23,11 +24,24 @@ import {
   difficultyLabels,
 } from '@/types/prompt';
 
+const palette = {
+  black: '#2B2B2B',
+  canvas: '#f5e8d3ff',
+  gray: '#D1CFCB',
+  yellow: '#FFD764',
+  coral: '#F57C73',
+};
+
 const rules = [
-  'One original upload per prompt per day.',
+  'One original upload per prompt per day. Prompts refresh at midnight UTC daily!',
   'Respect the community: keep submissions safe for work.',
-  'No AI, traced, or watermarked pieces.',
+  'No AI generated art',
   'Report anything that feels off—moderators review every flag.',
+];
+
+const footerTabs = [
+  { href: '/library', title: 'Library', icon: '📚' },
+  { href: '/settings', title: 'Settings', icon: '⚙️' },
 ];
 
 export default function TodayScreen() {
@@ -105,16 +119,18 @@ export default function TodayScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
-      <ScrollView
-        contentContainerStyle={styles.container}
-        showsVerticalScrollIndicator={false}
-        bounces
-      >
-        <Text style={styles.heading}>Today&apos;s Four</Text>
-        <Text style={styles.subheading}>
-          Daily prompts refresh at midnight UTC. Tap any card to jump into the prompt thread and
-          upload your work.
-        </Text>
+      <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
+        <View style={styles.hero}>
+          <Image
+            source={require('@/assets/images/dailydrawlogo.png')}
+            style={styles.logoImage}
+            resizeMode="contain"
+          />
+          <Pressable style={styles.rulesButton} onPress={() => setShowRules(true)}>
+            <Text style={styles.rulesButtonText}>View Rules</Text>
+          </Pressable>
+        </View>
+
         <View style={styles.statusRow}>
           <Text style={styles.countdownLabel}>Next refresh in {countdownLabel} (UTC)</Text>
           <Pressable
@@ -125,22 +141,19 @@ export default function TodayScreen() {
             <Text style={styles.refreshButtonText}>{isRefetching ? 'Refreshing…' : 'Refresh'}</Text>
           </Pressable>
         </View>
+
         {isLoading && !prompts.length && (
           <View style={styles.loadingRow}>
-            <ActivityIndicator />
+            <ActivityIndicator color={palette.black} />
             <Text style={styles.loadingText}>Fetching today&apos;s prompts…</Text>
           </View>
         )}
         {isError && (
           <View style={styles.errorBanner}>
-            <Text style={styles.errorText}>
-              Unable to load prompts. Pull to refresh and try again.
-            </Text>
+            <Text style={styles.errorText}>Unable to load prompts. Pull to refresh and try again.</Text>
           </View>
         )}
-        <Pressable style={styles.rulesButton} onPress={() => setShowRules(true)}>
-          <Text style={styles.rulesButtonText}>View Rules</Text>
-        </Pressable>
+
         <View style={styles.grid}>
           {PROMPT_DIFFICULTIES.map((difficulty) => (
             <PromptCard
@@ -150,15 +163,23 @@ export default function TodayScreen() {
             />
           ))}
         </View>
-        <View style={styles.footerLinks}>
-          <Link href="/library" style={styles.footerLink}>
-            Library
-          </Link>
-          <Link href="/settings" style={styles.footerLink}>
-            Settings
-          </Link>
-        </View>
       </ScrollView>
+
+      <View style={styles.bottomDock} pointerEvents="box-none">
+        <View style={styles.bottomDockInner}>
+          {footerTabs.map((tab) => (
+            <Link key={tab.href} href={tab.href} asChild>
+              <Pressable style={styles.dockButton}>
+                <View style={styles.dockIcon}>
+                  <Text style={styles.dockIconText}>{tab.icon}</Text>
+                </View>
+                <Text style={styles.dockLabel}>{tab.title}</Text>
+              </Pressable>
+            </Link>
+          ))}
+        </View>
+      </View>
+
       <Modal
         visible={showRules}
         animationType="fade"
@@ -177,6 +198,9 @@ export default function TodayScreen() {
         >
           <View style={styles.modalHandle} />
           <Text style={styles.modalTitle}>DailyDraw Rules</Text>
+          <Text style={styles.modalIntro}>
+            Guidelines to keep our community fun, productive, and safe!
+          </Text>
           <View style={styles.modalBody}>
             {rules.map((rule) => (
               <Text key={rule} style={styles.modalRule}>
@@ -199,20 +223,44 @@ export default function TodayScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: palette.canvas,
   },
   container: {
-    flex: 1,
+    flexGrow: 1,
     padding: 24,
-    paddingBottom: 48,
+    paddingBottom: 72,
     gap: 16,
   },
+  hero: {
+    gap: 12,
+    marginBottom: 8,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  logoImage: {
+    width: '65%',
+    height: 72,
+    marginLeft: '-10%',
+    top: '-15%',
+  },
+  heroBadge: {
+    display: 'none',
+  },
   heading: {
-    fontSize: 20,
+    fontSize: 32,
+    lineHeight: 38,
+    color: palette.black,
     fontWeight: '700',
   },
-  subheading: {
-    color: '#555',
+  headingAccent: {
+    backgroundColor: palette.yellow,
+    paddingHorizontal: 6,
+    borderRadius: 6,
+  },
+  tagline: {
+    color: palette.black,
+    opacity: 0.8,
   },
   statusRow: {
     flexDirection: 'row',
@@ -221,22 +269,22 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   countdownLabel: {
-    color: '#4b5563',
-    fontWeight: '600',
+    color: palette.black,
   },
   refreshButton: {
     paddingHorizontal: 14,
     paddingVertical: 6,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: '#d1d5db',
+    borderColor: palette.gray,
+    backgroundColor: '#fff',
   },
   refreshButtonDisabled: {
     opacity: 0.6,
   },
   refreshButtonText: {
     fontWeight: '600',
-    color: '#1f2937',
+    color: palette.black,
   },
   loadingRow: {
     flexDirection: 'row',
@@ -244,7 +292,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   loadingText: {
-    color: '#4b5563',
+    color: palette.black,
   },
   errorBanner: {
     padding: 12,
@@ -256,39 +304,38 @@ const styles = StyleSheet.create({
   errorText: {
     color: '#b91c1c',
   },
-  grid: {
-    gap: 12,
-  },
   rulesButton: {
     alignSelf: 'flex-start',
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 999,
-    backgroundColor: '#1f75ff',
+    backgroundColor: palette.coral,
   },
   rulesButtonText: {
-    color: '#fff',
+    color: palette.black,
     fontWeight: '600',
   },
+  grid: {
+    gap: 12,
+  },
   card: {
-    borderRadius: 16,
+    borderRadius: 18,
     borderWidth: 1,
-    borderColor: '#ddd',
-    padding: 14,
+    borderColor: palette.gray,
+    padding: 16,
     backgroundColor: '#fff',
     gap: 8,
   },
   cardDisabled: {
-    opacity: 0.6,
+    opacity: 0.55,
   },
   cardLabel: {
     fontSize: 12,
-    fontWeight: '600',
-    color: '#666',
+    color: palette.black,
   },
   cardDate: {
     fontSize: 12,
-    color: '#9ca3af',
+    color: palette.gray,
   },
   cardHeader: {
     flexDirection: 'row',
@@ -296,26 +343,58 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   cardTitle: {
-    marginTop: 4,
     fontSize: 16,
     fontWeight: '600',
+    color: palette.black,
   },
   cardHint: {
-    marginTop: 2,
-    color: '#888',
+    color: palette.black,
+    opacity: 0.6,
   },
-  footerLinks: {
+  bottomDock: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    paddingBottom: 16,
+    paddingHorizontal: 24,
+  },
+  bottomDockInner: {
+    backgroundColor: 'rgba(255, 255, 255, 0)',
+    borderRadius: 999,
+    borderWidth: 0,
+    borderColor: palette.gray,
+    paddingHorizontal: 26,
+    paddingVertical: 12,
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 'auto',
+    gap: 100,
   },
-  footerLink: {
+  dockButton: {
+    alignItems: 'center',
+    gap: 6,
+    flex: 1,
+  },
+  dockIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: palette.coral,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  dockIconText: {
+    fontSize: 24,
+    color: palette.black,
+  },
+  dockLabel: {
+    fontSize: 12,
+    color: palette.black,
     fontWeight: '600',
-    color: '#1f75ff',
   },
   modalBackdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'transparent',
+    backgroundColor: 'rgba(0,0,0,0.15)',
   },
   backdropTouchable: {
     flex: 1,
@@ -326,42 +405,47 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     backgroundColor: '#fff',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
     padding: 24,
     gap: 16,
     shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    elevation: 6,
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
   },
   modalHandle: {
     width: 48,
-    height: 5,
+    height: 6,
     borderRadius: 999,
-    backgroundColor: '#ddd',
+    backgroundColor: palette.gray,
     alignSelf: 'center',
   },
   modalTitle: {
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: '600',
     textAlign: 'center',
+    color: palette.black,
+  },
+  modalIntro: {
+    textAlign: 'center',
+    color: palette.black,
   },
   modalBody: {
     gap: 8,
   },
   modalRule: {
-    color: '#444',
+    color: palette.black,
   },
   modalCloseButton: {
     alignSelf: 'center',
-    paddingHorizontal: 24,
-    paddingVertical: 10,
+    paddingHorizontal: 28,
+    paddingVertical: 12,
     borderRadius: 999,
-    backgroundColor: '#1f75ff',
+    backgroundColor: palette.coral,
   },
   modalCloseText: {
-    color: '#fff',
+    color: palette.black,
     fontWeight: '600',
   },
 });
