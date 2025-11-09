@@ -9,7 +9,7 @@ This checklist breaks the build spec into bite-sized, reviewable pull requests. 
 
 ## PR 2 – Supabase Schema & Seeds
 - Observe existing tables `users`, `prompt_bank`, `daily_prompts`, `submissions`, `reports`, helper functions, and RLS from the build spec.
-- Add basic “manual QA” query snippets (e.g., `select * from daily_prompts`) to confirm schema deploys cleanly.
+- Add basic “manual QA” query snippets (e.g., `select * from daily_prompts`) to confirm schema deploys cleanly, and capture them in `docs/db-inf.md`. Add tests to make sure the API is functioning properly
 
 ## PR 3 – Edge Function Skeletons
 - Scaffold the six core Deno functions (`/username/set`, `/uploads/sign`, `/submissions/create`, `/images/sign-get`, `/prompts/today`, `/feed`, `/reports`) with type-safe request parsing and shared error helpers.
