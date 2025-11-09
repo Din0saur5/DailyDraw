@@ -49,6 +49,14 @@ function RootLayoutNav() {
             <Stack>
               <Stack.Screen name="index" options={{ headerShown: false }} />
               <Stack.Screen
+                name="reset-password"
+                options={{ title: 'Reset Password', presentation: 'modal' }}
+              />
+              <Stack.Screen
+                name="auth/confirm"
+                options={{ title: 'Email Confirmed', presentation: 'modal' }}
+              />
+              <Stack.Screen
                 name="t/[date]/[difficulty]"
                 options={{ title: 'Prompt Thread', headerBackTitle: 'Back' }}
               />
