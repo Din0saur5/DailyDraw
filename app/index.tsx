@@ -1,11 +1,28 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { Link } from 'expo-router';
-import { Animated, Modal, PanResponder, Pressable, StyleSheet, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Animated,
+  Modal,
+  PanResponder,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-const today = new Date().toISOString().slice(0, 10);
-const mockDifficulties = ['very easy', 'easy', 'medium', 'advanced'] as const;
+import { countDownToUtcMidnight, formatCountdown } from '@/lib/dates';
+import { useTodayPrompts } from '@/lib/queries';
+import {
+  DailyPrompt,
+  PROMPT_DIFFICULTIES,
+  PromptDifficulty,
+  difficultyLabels,
+} from '@/types/prompt';
+
 const rules = [
   'One original upload per prompt per day.',
   'Respect the community: keep submissions safe for work.',
@@ -17,23 +34,37 @@ export default function TodayScreen() {
   const [showRules, setShowRules] = useState(false);
   const sheetOffset = useRef(new Animated.Value(400)).current;
   const overlayOpacity = useRef(new Animated.Value(0)).current;
+  const countdownMs = useUtcCountdown();
+  const countdownLabel = formatCountdown(countdownMs);
+  const { data: prompts = [], isLoading, isError, isRefetching, refetch } = useTodayPrompts();
 
-  const animateSheet = (toValue: number, opacity: number, callback?: () => void) => {
-    Animated.parallel([
-      Animated.timing(sheetOffset, {
-        toValue,
-        duration: 240,
-        useNativeDriver: true,
-      }),
-      Animated.timing(overlayOpacity, {
-        toValue: opacity,
-        duration: 240,
-        useNativeDriver: true,
-      }),
-    ]).start(({ finished }) => {
-      if (finished && callback) callback();
+  const promptsByDifficulty = useMemo(() => {
+    const lookup: Partial<Record<PromptDifficulty, DailyPrompt>> = {};
+    prompts.forEach((prompt) => {
+      lookup[prompt.difficulty] = prompt;
     });
-  };
+    return lookup;
+  }, [prompts]);
+
+  const animateSheet = useCallback(
+    (toValue: number, opacity: number, callback?: () => void) => {
+      Animated.parallel([
+        Animated.timing(sheetOffset, {
+          toValue,
+          duration: 240,
+          useNativeDriver: true,
+        }),
+        Animated.timing(overlayOpacity, {
+          toValue: opacity,
+          duration: 240,
+          useNativeDriver: true,
+        }),
+      ]).start(({ finished }) => {
+        if (finished && callback) callback();
+      });
+    },
+    [overlayOpacity, sheetOffset],
+  );
 
   const panResponder = useRef(
     PanResponder.create({
@@ -70,30 +101,53 @@ export default function TodayScreen() {
       sheetOffset.setValue(400);
       overlayOpacity.setValue(0);
     }
-  }, [showRules, sheetOffset, overlayOpacity]);
+  }, [animateSheet, overlayOpacity, sheetOffset, showRules]);
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
-      <View style={styles.container}>
+      <ScrollView
+        contentContainerStyle={styles.container}
+        showsVerticalScrollIndicator={false}
+        bounces
+      >
         <Text style={styles.heading}>Today&apos;s Four</Text>
         <Text style={styles.subheading}>
-          This screen will call `/prompts/today` via TanStack Query and render prompt cards. For now
-          use the links below to navigate to the thread template for each difficulty.
+          Daily prompts refresh at midnight UTC. Tap any card to jump into the prompt thread and
+          upload your work.
         </Text>
+        <View style={styles.statusRow}>
+          <Text style={styles.countdownLabel}>Next refresh in {countdownLabel} (UTC)</Text>
+          <Pressable
+            onPress={() => refetch()}
+            disabled={isRefetching}
+            style={[styles.refreshButton, isRefetching && styles.refreshButtonDisabled]}
+          >
+            <Text style={styles.refreshButtonText}>{isRefetching ? 'Refreshing…' : 'Refresh'}</Text>
+          </Pressable>
+        </View>
+        {isLoading && !prompts.length && (
+          <View style={styles.loadingRow}>
+            <ActivityIndicator />
+            <Text style={styles.loadingText}>Fetching today&apos;s prompts…</Text>
+          </View>
+        )}
+        {isError && (
+          <View style={styles.errorBanner}>
+            <Text style={styles.errorText}>
+              Unable to load prompts. Pull to refresh and try again.
+            </Text>
+          </View>
+        )}
         <Pressable style={styles.rulesButton} onPress={() => setShowRules(true)}>
           <Text style={styles.rulesButtonText}>View Rules</Text>
         </Pressable>
         <View style={styles.grid}>
-          {mockDifficulties.map((difficulty) => (
-            <Link
+          {PROMPT_DIFFICULTIES.map((difficulty) => (
+            <PromptCard
               key={difficulty}
-              href={{ pathname: '/t/[date]/[difficulty]', params: { date: today, difficulty } }}
-              style={styles.card}
-            >
-              <Text style={styles.cardLabel}>{difficulty.toUpperCase()}</Text>
-              <Text style={styles.cardTitle}>Prompt placeholder</Text>
-              <Text style={styles.cardHint}>Tap to open the thread</Text>
-            </Link>
+              difficulty={difficulty}
+              prompt={promptsByDifficulty[difficulty] ?? null}
+            />
           ))}
         </View>
         <View style={styles.footerLinks}>
@@ -104,7 +158,7 @@ export default function TodayScreen() {
             Settings
           </Link>
         </View>
-      </View>
+      </ScrollView>
       <Modal
         visible={showRules}
         animationType="fade"
@@ -150,14 +204,57 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 24,
+    paddingBottom: 48,
     gap: 16,
   },
   heading: {
-    fontSize: 28,
+    fontSize: 20,
     fontWeight: '700',
   },
   subheading: {
     color: '#555',
+  },
+  statusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  countdownLabel: {
+    color: '#4b5563',
+    fontWeight: '600',
+  },
+  refreshButton: {
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+  },
+  refreshButtonDisabled: {
+    opacity: 0.6,
+  },
+  refreshButtonText: {
+    fontWeight: '600',
+    color: '#1f2937',
+  },
+  loadingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  loadingText: {
+    color: '#4b5563',
+  },
+  errorBanner: {
+    padding: 12,
+    borderRadius: 12,
+    backgroundColor: '#fef2f2',
+    borderWidth: 1,
+    borderColor: '#fecaca',
+  },
+  errorText: {
+    color: '#b91c1c',
   },
   grid: {
     gap: 12,
@@ -177,21 +274,34 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1,
     borderColor: '#ddd',
-    padding: 16,
+    padding: 14,
     backgroundColor: '#fff',
+    gap: 8,
+  },
+  cardDisabled: {
+    opacity: 0.6,
   },
   cardLabel: {
     fontSize: 12,
     fontWeight: '600',
     color: '#666',
   },
+  cardDate: {
+    fontSize: 12,
+    color: '#9ca3af',
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
   cardTitle: {
-    marginTop: 6,
-    fontSize: 18,
+    marginTop: 4,
+    fontSize: 16,
     fontWeight: '600',
   },
   cardHint: {
-    marginTop: 4,
+    marginTop: 2,
     color: '#888',
   },
   footerLinks: {
@@ -255,3 +365,63 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
+
+type PromptCardProps = {
+  difficulty: PromptDifficulty;
+  prompt: DailyPrompt | null;
+};
+
+function PromptCard({ difficulty, prompt }: PromptCardProps) {
+  const content = (
+    <>
+      <View style={styles.cardHeader}>
+        <Text style={styles.cardLabel}>{difficultyLabels[difficulty]}</Text>
+        {prompt && <Text style={styles.cardDate}>{formatPromptDate(prompt.promptDate)}</Text>}
+      </View>
+      <Text style={styles.cardTitle}>
+        {prompt ? prompt.promptText : 'Awaiting prompt for this slot'}
+      </Text>
+      <Text style={styles.cardHint}>
+        {prompt ? 'Tap to open the thread' : 'We will notify you when this prompt unlocks.'}
+      </Text>
+    </>
+  );
+
+  if (!prompt) {
+    return <View style={[styles.card, styles.cardDisabled]}>{content}</View>;
+  }
+
+  return (
+    <Link
+      href={{
+        pathname: '/t/[date]/[difficulty]',
+        params: {
+          date: prompt.promptDate.slice(0, 10),
+          difficulty: prompt.difficulty,
+        },
+      }}
+      asChild
+    >
+      <Pressable style={styles.card}>{content}</Pressable>
+    </Link>
+  );
+}
+
+function formatPromptDate(isoDate: string) {
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: 'numeric',
+    timeZone: 'UTC',
+  }).format(new Date(isoDate));
+}
+
+function useUtcCountdown() {
+  const [remaining, setRemaining] = useState(() => countDownToUtcMidnight());
+
+  useEffect(() => {
+    const interval = setInterval(() => setRemaining(countDownToUtcMidnight()), 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  return remaining;
+}
