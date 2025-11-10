@@ -27,7 +27,7 @@ describe('AuthGate', () => {
         <TestChild />
       </AuthGate>,
     );
-    expect(screen.getByText(/Sign in to DailyDraw/i)).toBeTruthy();
+    expect(screen.getByText(/Welcome to DailyDraw/i)).toBeTruthy();
     fireEvent.press(screen.getByText(/Bypass/i));
     expect(screen.getByText('Ready')).toBeTruthy();
   });

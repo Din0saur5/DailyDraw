@@ -16,7 +16,9 @@ export function SessionProvider({ children }: PropsWithChildren) {
       return;
     }
 
-    if (!supabase) {
+    const client = supabase;
+
+    if (!client) {
       setSession(null);
       setProfile(null);
       setStatus('unauthenticated');
@@ -26,7 +28,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
     let isMounted = true;
 
     const loadProfile = async (userId: string) => {
-      const { data, error } = await supabase
+      const { data, error } = await client
         .from('user_public')
         .select('id,username,is_premium')
         .eq('id', userId)
@@ -54,7 +56,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
 
     const bootstrap = async () => {
       setStatus('loading');
-      const { data, error } = await supabase.auth.getSession();
+      const { data, error } = await client.auth.getSession();
       if (!isMounted) return;
 
       if (error || !data.session) {
@@ -71,7 +73,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
 
     bootstrap();
 
-    const { data: subscription } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const { data: subscription } = client.auth.onAuthStateChange(async (event, session) => {
       if (!isMounted) return;
 
       if (event === 'PASSWORD_RECOVERY') {

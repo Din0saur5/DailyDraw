@@ -21,10 +21,7 @@ const sha256Hex = async (input: string) => {
 };
 
 const hmac = async (keyData: ArrayBuffer | string, data: string) => {
-  const key =
-    typeof keyData === 'string'
-      ? encoder.encode(keyData)
-      : keyData;
+  const key = typeof keyData === 'string' ? encoder.encode(keyData) : keyData;
   const cryptoKey = await crypto.subtle.importKey(
     'raw',
     key,

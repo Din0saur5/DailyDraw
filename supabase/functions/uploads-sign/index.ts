@@ -13,10 +13,7 @@ serve(async (req) => {
     const supabase = createSupabaseClient(req);
     const user = await requireUser(req, supabase);
     const body = await requireJsonBody(req);
-    const result = await handleUploadSign(
-      { signer, currentUserId: user.id },
-      body,
-    );
+    const result = await handleUploadSign({ signer, currentUserId: user.id }, body);
     return jsonResponse(result);
   } catch (error) {
     return handleErrorResponse(error);

@@ -20,7 +20,11 @@ export interface SubmissionsRepository {
 }
 
 export interface ReportsRepository {
-  createReport(payload: { submissionId: string; reporterId: string; reason: string }): Promise<void>;
+  createReport(payload: {
+    submissionId: string;
+    reporterId: string;
+    reason: string;
+  }): Promise<void>;
 }
 
 export interface DailyPromptRecord {

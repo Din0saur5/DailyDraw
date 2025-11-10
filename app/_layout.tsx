@@ -1,7 +1,7 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
-import { Stack, useNavigationContainerRef } from 'expo-router';
+import { Stack, usePathname } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useRef } from 'react';
 import 'react-native-reanimated';
@@ -41,29 +41,22 @@ export default function RootLayout() {
 
 function RootLayoutNav() {
   const colorScheme = useColorScheme();
-  const navigationRef = useNavigationContainerRef();
-  const routeNameRef = useRef<string | null>(null);
+  const pathname = usePathname();
+  const lastTrackedScreen = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!pathname) return;
+    if (lastTrackedScreen.current === pathname) return;
+    lastTrackedScreen.current = pathname;
+    trackScreenView(pathname);
+  }, [pathname]);
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <QueryProvider>
         <SessionProvider>
           <AuthGate>
-            <Stack
-              ref={navigationRef}
-              onReady={() => {
-                const initialRouteName = navigationRef.getCurrentRoute()?.name ?? 'unknown';
-                routeNameRef.current = initialRouteName;
-                trackScreenView(initialRouteName);
-              }}
-              onStateChange={() => {
-                const currentRouteName = navigationRef.getCurrentRoute()?.name ?? 'unknown';
-                if (routeNameRef.current !== currentRouteName) {
-                  trackScreenView(currentRouteName);
-                }
-                routeNameRef.current = currentRouteName;
-              }}
-            >
+            <Stack>
               <Stack.Screen name="index" options={{ headerShown: false }} />
               <Stack.Screen
                 name="reset-password"

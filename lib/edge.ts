@@ -26,8 +26,52 @@ export async function invokeEdge<TResponse>(
   });
 
   if (error) {
-    throw new Error(error.message);
+    throw new Error(await formatEdgeError(error));
   }
 
   return data as TResponse;
+}
+
+async function formatEdgeError(error: any): Promise<string> {
+  const defaultMessage = typeof error?.message === 'string' ? error.message : 'Request failed';
+  const context = error?.context ?? error?.response;
+
+  if (!context) {
+    return defaultMessage;
+  }
+
+  // FunctionsHttpError passes the fetch Response as the context.
+  if (typeof context === 'object' && typeof (context as Response).text === 'function') {
+    try {
+      const response = context as Response;
+      const clone = response.clone ? response.clone() : response;
+      const text = await clone.text();
+      if (!text) return defaultMessage;
+      try {
+        const parsed = JSON.parse(text);
+        if (parsed?.error) {
+          if (typeof parsed.error === 'string') {
+            return parsed.error;
+          }
+          if (typeof parsed.error?.message === 'string') {
+            return parsed.error.message;
+          }
+        }
+        if (typeof parsed?.message === 'string') {
+          return parsed.message;
+        }
+        return text;
+      } catch {
+        return text;
+      }
+    } catch {
+      return defaultMessage;
+    }
+  }
+
+  if (typeof context?.message === 'string') {
+    return context.message;
+  }
+
+  return defaultMessage;
 }

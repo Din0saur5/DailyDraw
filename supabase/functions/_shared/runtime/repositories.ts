@@ -1,7 +1,14 @@
 import { createHttpError } from '../core/errors.ts';
-import type { DailyPromptRecord, SubmissionRecord, SubmissionWithUser } from '../core/repos.ts';
-import type { SubmissionUpsertInput } from '../core/repos.ts';
-import type { PromptsRepository, ReportsRepository, SubmissionsRepository, UsersRepository } from '../core/repos.ts';
+import type {
+  DailyPromptRecord,
+  PromptsRepository,
+  ReportsRepository,
+  SubmissionRecord,
+  SubmissionUpsertInput,
+  SubmissionWithUser,
+  SubmissionsRepository,
+  UsersRepository,
+} from '../core/repos.ts';
 
 type SupabaseClient = ReturnType<typeof createSupabaseStub>;
 
@@ -130,5 +137,10 @@ export const createRepositories = (client: SupabaseClient) => {
     },
   };
 
-  return { users: usersRepo, prompts: promptsRepo, submissions: submissionsRepo, reports: reportsRepo };
+  return {
+    users: usersRepo,
+    prompts: promptsRepo,
+    submissions: submissionsRepo,
+    reports: reportsRepo,
+  };
 };

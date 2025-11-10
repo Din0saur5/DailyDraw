@@ -11,10 +11,7 @@ export interface UsernamePayload {
   username?: string;
 }
 
-export const handleSetUsername = async (
-  deps: UsernameHandlerDeps,
-  payload: UsernamePayload,
-) => {
+export const handleSetUsername = async (deps: UsernameHandlerDeps, payload: UsernamePayload) => {
   const username = validateUsername(payload.username);
   const taken = await deps.usersRepo.isUsernameTaken(username, deps.currentUserId);
   if (taken) {

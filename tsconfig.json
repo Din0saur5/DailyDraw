@@ -19,7 +19,6 @@
   ],
   "exclude": [
     "node_modules",
-    "supabase/functions/**/index.ts",
-    "supabase/functions/_shared/runtime/**"
+    "supabase/functions/**/*"
   ]
 }

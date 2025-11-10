@@ -42,7 +42,7 @@ const rules = [
 const footerTabs = [
   { href: '/library', title: 'Library', icon: '📚' },
   { href: '/settings', title: 'Settings', icon: '⚙️' },
-];
+] as const;
 
 export default function TodayScreen() {
   const [showRules, setShowRules] = useState(false);
@@ -150,7 +150,9 @@ export default function TodayScreen() {
         )}
         {isError && (
           <View style={styles.errorBanner}>
-            <Text style={styles.errorText}>Unable to load prompts. Pull to refresh and try again.</Text>
+            <Text style={styles.errorText}>
+              Unable to load prompts. Pull to refresh and try again.
+            </Text>
           </View>
         )}
 

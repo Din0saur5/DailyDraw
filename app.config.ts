@@ -46,8 +46,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     },
     extra: {
       ...config.extra,
-       eas:  {"projectId": "cc0fe617-beb5-4e39-9b30-42db5dae1f30"},
-      
+      eas: { projectId: 'cc0fe617-beb5-4e39-9b30-42db5dae1f30' },
       supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL ?? '',
       supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '',
       allowDevAuthBypass,
