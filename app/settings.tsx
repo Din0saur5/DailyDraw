@@ -5,6 +5,7 @@ import { useSessionStore } from '@/stores/useSessionStore';
 import { useSetUsernameMutation } from '@/lib/mutations/username';
 import { supabase } from '@/lib/supabase';
 import { validateUsernameInput, formatUtcToday } from '@/lib/validation';
+import { palette } from '@/constants/palette';
 
 export default function SettingsScreen() {
   const profile = useSessionStore((state) => state.profile);
@@ -116,6 +117,7 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     padding: 24,
     gap: 16,
+    backgroundColor: palette.canvas,
   },
   heading: {
     fontSize: 24,
@@ -126,26 +128,29 @@ const styles = StyleSheet.create({
   },
   card: {
     borderWidth: 1,
-    borderColor: '#e1e1e1',
+    borderColor: palette.gray,
     borderRadius: 16,
     padding: 16,
     gap: 8,
+    backgroundColor: '#fffef8',
   },
   cardTitle: {
     fontSize: 16,
     fontWeight: '600',
+    color: palette.black,
   },
   cardBody: {
-    color: '#666',
+    color: '#4b5563',
   },
   input: {
     borderWidth: 1,
-    borderColor: '#d1d5db',
+    borderColor: palette.gray,
     borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 10,
     fontSize: 16,
-    color: '#111827',
+    color: palette.black,
+    backgroundColor: '#fffef8',
   },
   errorText: {
     color: '#b91c1c',
@@ -159,7 +164,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingVertical: 12,
     alignItems: 'center',
-    backgroundColor: '#111827',
+    backgroundColor: palette.black,
   },
   primaryButtonText: {
     color: '#fff',
@@ -170,10 +175,10 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#111827',
+    borderColor: palette.gray,
   },
   secondaryButtonText: {
-    color: '#111827',
+    color: palette.black,
     fontWeight: '600',
   },
   disabledButton: {

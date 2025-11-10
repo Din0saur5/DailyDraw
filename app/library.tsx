@@ -20,6 +20,7 @@ import { useSessionStore } from '@/stores/useSessionStore';
 import { LibraryEntry, formatPromptLabel } from '@/types/library';
 import { purchasePremium, restorePremium, initIapConnection, endIapConnection } from '@/lib/iap';
 import { usePremiumStatusMutation } from '@/lib/mutations/premium';
+import { palette } from '@/constants/palette';
 
 export default function LibraryScreen() {
   const profile = useSessionStore((state) => state.profile);
@@ -298,6 +299,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 24,
+    backgroundColor: palette.canvas,
   },
   heading: {
     fontSize: 24,
@@ -312,6 +314,7 @@ const styles = StyleSheet.create({
   listContent: {
     paddingBottom: 40,
     gap: 16,
+    backgroundColor: palette.canvas,
   },
   listHeader: {
     gap: 12,
@@ -320,12 +323,12 @@ const styles = StyleSheet.create({
   searchInput: {
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: palette.gray,
     paddingHorizontal: 14,
     paddingVertical: 10,
     fontSize: 16,
-    color: '#111827',
-    backgroundColor: '#fff',
+    color: palette.black,
+    backgroundColor: '#fffef8',
   },
   errorBanner: {
     borderWidth: 1,
@@ -368,17 +371,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 12,
+    backgroundColor: palette.canvas,
   },
   loadingCopy: {
     color: '#4b5563',
   },
   libraryCard: {
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: palette.gray,
     borderRadius: 16,
     padding: 16,
     gap: 10,
-    backgroundColor: '#fff',
+    backgroundColor: '#fffef8',
   },
   libraryHeader: {
     flexDirection: 'row',
@@ -407,7 +411,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: '#f3f4f6',
+    borderColor: palette.gray,
   },
   libraryImage: {
     width: '100%',
@@ -435,14 +439,15 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     padding: 24,
     gap: 16,
+    backgroundColor: palette.canvas,
   },
   upsellCard: {
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: palette.gray,
     borderRadius: 16,
     padding: 16,
     gap: 8,
-    backgroundColor: '#fff',
+    backgroundColor: '#fffef8',
   },
   cardTitle: {
     fontSize: 16,
@@ -454,7 +459,7 @@ const styles = StyleSheet.create({
   },
   primaryButton: {
     borderRadius: 14,
-    backgroundColor: '#111827',
+    backgroundColor: palette.black,
     paddingVertical: 14,
     alignItems: 'center',
   },
@@ -465,7 +470,7 @@ const styles = StyleSheet.create({
   secondaryButton: {
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: palette.gray,
     paddingVertical: 14,
     alignItems: 'center',
   },
@@ -483,11 +488,11 @@ const styles = StyleSheet.create({
   },
   emptyState: {
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: palette.gray,
     borderRadius: 16,
     padding: 16,
     gap: 8,
     alignItems: 'flex-start',
-    backgroundColor: '#fff',
+    backgroundColor: '#fffef8',
   },
 });

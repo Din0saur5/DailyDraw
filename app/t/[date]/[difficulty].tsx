@@ -22,6 +22,7 @@ import { useSessionStore } from '@/stores/useSessionStore';
 import { createEmptyUploadEntry, useUploadStore } from '@/stores/useUploadStore';
 import { DailyPrompt, difficultyLabels, PromptDifficulty } from '@/types/prompt';
 import { useQueryClient } from '@tanstack/react-query';
+import { palette } from '@/constants/palette';
 
 export default function ThreadScreen() {
   const { date, difficulty } = useLocalSearchParams<{ date?: string; difficulty?: string }>();
@@ -316,16 +317,18 @@ const extractMessage = (error: unknown) =>
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: palette.canvas,
   },
   uploadContent: {
     padding: 24,
     paddingBottom: 48,
     gap: 16,
+    backgroundColor: palette.canvas,
   },
   statusArea: {
     padding: 24,
     gap: 16,
+    backgroundColor: palette.canvas,
   },
   headerStack: {
     gap: 16,
@@ -365,11 +368,12 @@ const styles = StyleSheet.create({
   },
   missingPrompt: {
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: palette.gray,
     borderRadius: 16,
     padding: 16,
     gap: 8,
     marginTop: 16,
+    backgroundColor: '#fffef8',
   },
   missingPromptTitle: {
     fontSize: 18,
@@ -382,10 +386,10 @@ const styles = StyleSheet.create({
   promptSummary: {
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: palette.gray,
     padding: 16,
     gap: 8,
-    backgroundColor: '#fff',
+    backgroundColor: '#fffef8',
   },
   promptDate: {
     color: '#6b7280',
@@ -409,10 +413,10 @@ const styles = StyleSheet.create({
   uploadPanel: {
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: palette.gray,
     padding: 16,
     gap: 12,
-    backgroundColor: '#fff',
+    backgroundColor: '#fffef8',
   },
   uploadHeader: {
     flexDirection: 'row',
@@ -434,12 +438,12 @@ const styles = StyleSheet.create({
   selectButton: {
     paddingVertical: 12,
     borderRadius: 12,
-    backgroundColor: '#f3f4f6',
+    backgroundColor: palette.gray,
     alignItems: 'center',
   },
   selectButtonText: {
     fontWeight: '600',
-    color: '#111827',
+    color: palette.black,
   },
   previewCard: {
     borderRadius: 12,
@@ -470,13 +474,13 @@ const styles = StyleSheet.create({
   },
   captionInput: {
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: palette.gray,
     borderRadius: 12,
     padding: 12,
     minHeight: 80,
     textAlignVertical: 'top',
-    color: '#111827',
-    backgroundColor: '#fff',
+    color: palette.black,
+    backgroundColor: '#fffef8',
   },
   captionCounter: {
     alignSelf: 'flex-end',
@@ -497,7 +501,7 @@ const styles = StyleSheet.create({
   uploadButton: {
     paddingVertical: 14,
     borderRadius: 12,
-    backgroundColor: '#111827',
+    backgroundColor: palette.black,
     alignItems: 'center',
   },
   uploadButtonText: {
@@ -509,11 +513,11 @@ const styles = StyleSheet.create({
   },
   lockedCard: {
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: palette.gray,
     borderRadius: 16,
     padding: 16,
     gap: 8,
-    backgroundColor: '#fff',
+    backgroundColor: '#fffef8',
   },
   lockedTitle: {
     fontSize: 16,

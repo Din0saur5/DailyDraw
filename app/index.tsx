@@ -23,14 +23,7 @@ import {
   PromptDifficulty,
   difficultyLabels,
 } from '@/types/prompt';
-
-const palette = {
-  black: '#2B2B2B',
-  canvas: '#f5e8d3ff',
-  gray: '#D1CFCB',
-  yellow: '#FFD764',
-  coral: '#F57C73',
-};
+import { palette } from '@/constants/palette';
 
 const rules = [
   'One original upload per prompt per day. Prompts refresh at midnight UTC daily!',
