@@ -13,7 +13,11 @@ serve(async (req) => {
     const repos = createRepositories(supabase);
     const result = await handleFeedRequest(
       { submissionsRepo: repos.submissions },
-      { dailyPromptId: url.searchParams.get('dailyPromptId') ?? undefined },
+      {
+        dailyPromptId: url.searchParams.get('dailyPromptId') ?? undefined,
+        cursor: url.searchParams.get('cursor'),
+        limit: url.searchParams.get('limit'),
+      },
     );
     return jsonResponse(result);
   } catch (error) {

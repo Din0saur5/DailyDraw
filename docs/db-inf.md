@@ -9,8 +9,8 @@ This note distills the Supabase schema that already exists in the project so eng
 | `public.users` | Profile rows created by the auth trigger. | `username` matches `^[A-Za-z0-9_.]{3,20}$`, case-insensitive unique index, premium metadata (`is_premium`, `premium_expires_at`). |
 | `public.prompt_bank` | Source-of-truth prompt catalog. | `difficulty` enum (`very_easy`, `easy`, `medium`, `advanced`), `retired_at` set after a prompt is snapshotted. |
 | `public.daily_prompts` | UTC snapshot per day + difficulty. | `prompt_date` is now a `timestamptz` pinned to UTC midnight; unique constraint enforced on `(date_trunc('day', prompt_date), difficulty)`; stores prompt text snapshot + pointer to `prompt_bank_id`. |
-| `public.submissions` | One upload per user per prompt thread. | Unique `(daily_prompt_id, user_id)`, width/height > 0, caption ≤ 300 chars, boolean `is_removed`.|
-| `public.reports` | Player moderation queue. | Unique `(submission_id, reporter_id, reason)` prevents spam; trigger flips `submissions.is_removed` after ≥10 matching reasons. |
+| `public.submissions` | One upload per user per prompt thread. | Bigint `id` primary key, unique `(daily_prompt_id, user_id)`, width/height > 0, caption ≤ 300 chars, boolean `is_removed`.|
+| `public.reports` | Player moderation queue. | Bigint `submission_id` FK, unique `(submission_id, reporter_id, reason)` prevents spam; trigger flips `submissions.is_removed` after ≥10 matching reasons. |
 | `public.moderation_jobs` | Background moderation follow-up (see diagram). | Tracks escalations kicked off by reports (status, attempts, timestamps). |
 | `public.user_public` view | Safe profile fields for feed joins. | Grants `select` to `anon` + `authenticated`. |
 | `public.user_is_premium(uid uuid)` | Helper for cleanup worker + policies. | Returns true when `is_premium` or `premium_expires_at > now()`. |

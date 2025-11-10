@@ -66,8 +66,8 @@
 - `public.users`: canonical profile (enforced by auth trigger). `username` unique; maintain subscription metadata.
 - `public.prompt_bank`: seeded prompts; reused until retired.
 - `public.daily_prompts`: snapshot table keyed by `prompt_date+difficulty`. Trigger retires prompt when used.
-- `public.submissions`: row per user per prompt thread. `original_key` stored for R2 path.
-- `public.reports`: unique per `(submission_id, reporter_id, reason)` with trigger to set `is_removed` after ≥10 identical reason reports.
+- `public.submissions`: row per user per prompt thread (bigint `id`, foreign keys to `users.id` + `daily_prompts.id`). `original_key` stored for R2 path.
+- `public.reports`: unique per `(submission_id, reporter_id, reason)` with trigger to set `is_removed` after ≥10 identical reason reports. `submission_id` is the bigint from `public.submissions.id`.
 - Helper function `user_is_premium(uid uuid) returns boolean`.
 - RLS quick reference:
   - Users: `auth.uid() = id` for full row; view `user_public` for listing.
@@ -83,11 +83,11 @@
 | `/submissions/create` | POST | `{ dailyPromptId, key, caption, width, height }` | `Submission` | Uses `insert ... on conflict (user_id, daily_prompt_id) do update set ... returning *`. |
 | `/images/sign-get` | GET | `?key=...` | `{ url, expiresAt }` | Validates ownership for library; otherwise ensures `is_removed = false`. |
 | `/prompts/today` | GET | none | `DailyPrompt[]` | Checks `timezone('UTC', now())::date`. |
-| `/feed` | GET | `?dailyPromptId=` | `SubmissionWithUser[]` | Joins `public.users.username`, filters `is_removed=false`. |
-| `/reports` | POST | `{ submissionId, reason }` | `204` | Uses DB trigger to flip `is_removed` after threshold. |
+| `/feed` | GET | `?dailyPromptId=&cursor=&limit=` | `SubmissionWithUser[]` | Joins `public.users.username`, filters `is_removed=false`. `cursor` uses `created_at` ISO timestamps; `limit` ≤50 (default 20). |
+| `/reports` | POST | `{ submissionId, reason }` | `204` | `submissionId` is the bigint submission ID (send as decimal string). Trigger flips `is_removed` after threshold. |
 
 Implementation notes:
-- Edge functions rely on `createClient` with `SUPABASE_URL` + `SUPABASE_SERVICE_KEY`. Validate `supabase.auth.getUser()` on each request.
+- Edge functions rely on `createClient` with `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY`. Validate `supabase.auth.getUser()` on each request.
 - Provide shared util module for error responses (HTTP 400/401/409).
 - Wrap R2 signing using AWS SDK (S3 compatible) or `cloudflare` package; keep TTL ≤5 minutes.
 
@@ -184,5 +184,3 @@ Implementation notes:
    - Port cleanup script, schedule on Render.
 8. **QA & polish**
    - Test across OSes, run through daily cutoff, confirm RLS paths.
-
-

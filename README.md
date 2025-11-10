@@ -24,7 +24,7 @@ Expo Router app for the DailyDraw mobile experience. The build spec lives in `do
 
 ### Supabase Edge functions
 - `SUPABASE_URL`
-- `SUPABASE_SERVICE_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
 - `CLOUDFLARE_ACCOUNT_ID`
 - `R2_ACCESS_KEY_ID`
 - `R2_SECRET_ACCESS_KEY`
@@ -33,7 +33,7 @@ Expo Router app for the DailyDraw mobile experience. The build spec lives in `do
 
 ### Render cleanup worker (cron)
 - `SUPABASE_URL`
-- `SUPABASE_SERVICE_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
 - `CLOUDFLARE_ACCOUNT_ID`
 - `R2_ACCESS_KEY_ID`
 - `R2_SECRET_ACCESS_KEY`

@@ -1,5 +1,5 @@
 import { ReportsRepository } from './repos.ts';
-import { validateReason, validateUuid } from './validators.ts';
+import { validateReason, validateIntId } from './validators.ts';
 import { createHttpError } from './errors.ts';
 
 export interface ReportsDeps {
@@ -17,11 +17,11 @@ export const handleReportCreate = async (deps: ReportsDeps, payload: ReportPaylo
     throw createHttpError(400, 'submissionId is required');
   }
 
-  validateUuid(payload.submissionId, 'submissionId');
+  const submissionId = validateIntId(payload.submissionId, 'submissionId');
   const reason = validateReason(payload.reason);
 
   await deps.reportsRepo.createReport({
-    submissionId: payload.submissionId,
+    submissionId,
     reporterId: deps.currentUserId,
     reason,
   });

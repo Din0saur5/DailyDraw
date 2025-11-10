@@ -16,7 +16,11 @@ export interface UsersRepository {
 export interface SubmissionsRepository {
   upsertSubmission(payload: SubmissionUpsertInput): Promise<SubmissionRecord>;
   findByStorageKey(key: string): Promise<SubmissionRecord | null>;
-  listFeed(params: { dailyPromptId: string; limit: number }): Promise<SubmissionWithUser[]>;
+  listFeed(params: {
+    dailyPromptId: string;
+    limit: number;
+    cursor?: string;
+  }): Promise<SubmissionWithUser[]>;
 }
 
 export interface ReportsRepository {

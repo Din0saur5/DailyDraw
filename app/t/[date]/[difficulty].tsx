@@ -13,17 +13,20 @@ import {
   View,
 } from 'react-native';
 
-import { useCreateSubmissionMutation } from '@/lib/mutations/submissions';
-import { useTodayPrompts } from '@/lib/queries';
-import { pickUploadAsset, uploadPreparedAsset } from '@/lib/uploads';
+import FeedList from '@/components/feed/FeedList';
 import { trackEvent } from '@/lib/analytics';
+import { useCreateSubmissionMutation } from '@/lib/mutations/submissions';
+import { useSubmissionForPrompt, useTodayPrompts } from '@/lib/queries';
+import { pickUploadAsset, uploadPreparedAsset } from '@/lib/uploads';
+import { useSessionStore } from '@/stores/useSessionStore';
+import { createEmptyUploadEntry, useUploadStore } from '@/stores/useUploadStore';
 import { DailyPrompt, difficultyLabels, PromptDifficulty } from '@/types/prompt';
-import { useUploadStore, createEmptyUploadEntry } from '@/stores/useUploadStore';
 import { useQueryClient } from '@tanstack/react-query';
 
 export default function ThreadScreen() {
   const { date, difficulty } = useLocalSearchParams<{ date?: string; difficulty?: string }>();
   const { data: prompts = [], isLoading, isError, refetch } = useTodayPrompts();
+  const currentUserId = useSessionStore((state) => state.profile?.id ?? null);
 
   const prompt = useMemo(() => {
     if (!date || !difficulty) return null;
@@ -36,6 +39,18 @@ export default function ThreadScreen() {
     );
   }, [date, difficulty, prompts]);
 
+  const promptId = prompt?.id ?? null;
+  const uploadEntry = useUploadStore((state) =>
+    promptId ? state.uploads[promptId] : undefined,
+  );
+  const { data: serverSubmission } = useSubmissionForPrompt(promptId, currentUserId);
+
+  const hasLocalSubmission = Boolean(
+    uploadEntry && (uploadEntry.status === 'success' || uploadEntry.lastUploadedKey),
+  );
+  const hasServerSubmission = Boolean(serverSubmission && !serverSubmission.isRemoved);
+  const canShowFeed = Boolean(prompt && (hasLocalSubmission || hasServerSubmission));
+
   const headerTitle = prompt
     ? `${difficultyLabels[prompt.difficulty]} · ${formatPromptDate(prompt.promptDate)}`
     : `${difficulty ?? 'Thread'} · ${date ?? ''}`;
@@ -43,44 +58,57 @@ export default function ThreadScreen() {
   return (
     <View style={styles.container}>
       <Stack.Screen options={{ title: headerTitle, headerLargeTitle: false }} />
-      {isLoading && (
-        <View style={styles.loadingRow}>
-          <ActivityIndicator />
-          <Text style={styles.loadingText}>Fetching prompt details…</Text>
-        </View>
-      )}
-      {isError && (
-        <View style={styles.errorBanner}>
-          <Text style={styles.errorTitle}>Unable to load prompt.</Text>
-          <Pressable style={styles.refetchButton} onPress={() => refetch()}>
-            <Text style={styles.refetchButtonText}>Try again</Text>
-          </Pressable>
-        </View>
-      )}
-      {!prompt && !isLoading && (
-        <View style={styles.missingPrompt}>
-          <Text style={styles.missingPromptTitle}>Prompt unavailable</Text>
-          <Text style={styles.missingPromptBody}>
-            We could not find a prompt matching this URL. Make sure you opened today&apos;s
-            challenge from the home screen.
-          </Text>
-        </View>
-      )}
-      {prompt && (
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
-          <PromptSummary prompt={prompt} />
-          <UploadPanel prompt={prompt} />
-          <View style={styles.placeholderCard}>
-            <Text style={styles.cardTitle}>Feed placeholder</Text>
-            <Text style={styles.cardBody}>
-              Community submissions will render here in PR7 with reporting + signed image URLs.
+      <View style={styles.statusArea}>
+        {isLoading && (
+          <View style={styles.loadingRow}>
+            <ActivityIndicator />
+            <Text style={styles.loadingText}>Fetching prompt details…</Text>
+          </View>
+        )}
+        {isError && (
+          <View style={styles.errorBanner}>
+            <Text style={styles.errorTitle}>Unable to load prompt.</Text>
+            <Pressable style={styles.refetchButton} onPress={() => refetch()}>
+              <Text style={styles.refetchButtonText}>Try again</Text>
+            </Pressable>
+          </View>
+        )}
+        {!prompt && !isLoading && (
+          <View style={styles.missingPrompt}>
+            <Text style={styles.missingPromptTitle}>Prompt unavailable</Text>
+            <Text style={styles.missingPromptBody}>
+              We could not find a prompt matching this URL. Make sure you opened today&apos;s
+              challenge from the home screen.
             </Text>
           </View>
-        </ScrollView>
-      )}
+        )}
+      </View>
+      {prompt &&
+        (canShowFeed ? (
+          <FeedList
+            dailyPromptId={prompt.id}
+            currentUserId={currentUserId}
+            header={
+              <View style={styles.headerStack}>
+                <PromptSummary prompt={prompt} />
+              </View>
+            }
+          />
+        ) : (
+          <ScrollView
+            contentContainerStyle={styles.uploadContent}
+            showsVerticalScrollIndicator={false}
+          >
+            <PromptSummary prompt={prompt} />
+            <UploadPanel prompt={prompt} />
+            <View style={styles.lockedCard}>
+              <Text style={styles.lockedTitle}>Share to unlock today&apos;s feed</Text>
+              <Text style={styles.lockedBody}>
+                Upload your drawing to join the conversation for this prompt.
+              </Text>
+            </View>
+          </ScrollView>
+        ))}
     </View>
   );
 }
@@ -96,8 +124,7 @@ function PromptSummary({ prompt }: PromptSummaryProps) {
       <Text style={styles.promptDifficulty}>{difficultyLabels[prompt.difficulty]}</Text>
       <Text style={styles.promptText}>{prompt.promptText}</Text>
       <Text style={styles.promptSupport}>
-        Upload exactly one original piece per prompt. Need inspiration? Check the four prompts on
-        the home screen.
+        Upload one original piece of art for the prompt to be able to view everyone else's submissions!
       </Text>
     </View>
   );
@@ -118,6 +145,7 @@ function UploadPanel({ prompt }: UploadPanelProps) {
   const startUpload = useUploadStore((state) => state.startUpload);
   const markSuccess = useUploadStore((state) => state.markSuccess);
   const markError = useUploadStore((state) => state.markError);
+  const currentUserId = useSessionStore((state) => state.profile?.id ?? null);
 
   const { mutateAsync: submitSubmission } = useCreateSubmissionMutation();
   const isBusy = entry.status === 'uploading';
@@ -169,6 +197,11 @@ function UploadPanel({ prompt }: UploadPanelProps) {
       const hasPrevious = Boolean(useUploadStore.getState().uploads[prompt.id]?.lastUploadedKey);
       markSuccess(prompt.id, submission.originalKey, hasPrevious);
       await queryClient.invalidateQueries({ queryKey: ['feed', prompt.id] });
+      if (currentUserId) {
+        await queryClient.invalidateQueries({
+          queryKey: ['submission', currentUserId, prompt.id],
+        });
+      }
       trackEvent('upload_success', { promptId: prompt.id, replaced: hasPrevious });
     } catch (error) {
       const message = extractMessage(error);
@@ -176,6 +209,7 @@ function UploadPanel({ prompt }: UploadPanelProps) {
       trackEvent('upload_failed', { promptId: prompt.id, message });
     }
   }, [
+    currentUserId,
     entry.asset,
     entry.caption,
     markError,
@@ -282,10 +316,18 @@ const extractMessage = (error: unknown) =>
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 24,
+    backgroundColor: '#f5f5f5',
   },
-  scrollContent: {
-    paddingBottom: 40,
+  uploadContent: {
+    padding: 24,
+    paddingBottom: 48,
+    gap: 16,
+  },
+  statusArea: {
+    padding: 24,
+    gap: 16,
+  },
+  headerStack: {
     gap: 16,
   },
   loadingRow: {
@@ -465,19 +507,21 @@ const styles = StyleSheet.create({
   disabledButton: {
     opacity: 0.6,
   },
-  placeholderCard: {
+  lockedCard: {
     borderWidth: 1,
-    borderColor: '#e1e1e1',
+    borderColor: '#e5e7eb',
     borderRadius: 16,
     padding: 16,
-    gap: 6,
+    gap: 8,
     backgroundColor: '#fff',
   },
-  cardTitle: {
+  lockedTitle: {
     fontSize: 16,
     fontWeight: '600',
+    color: '#111827',
   },
-  cardBody: {
-    color: '#666',
+  lockedBody: {
+    color: '#4b5563',
+    lineHeight: 20,
   },
 });

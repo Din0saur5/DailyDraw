@@ -35,6 +35,15 @@ export const validateUuid = (value: string, field = 'id') => {
   return value;
 };
 
+export const validateIntId = (value: string | number, field = 'id') => {
+  const normalized =
+    typeof value === 'number' && Number.isFinite(value) ? value.toString(10) : String(value ?? '');
+  if (!/^[0-9]+$/.test(normalized)) {
+    throw createHttpError(422, `${field} must be a positive integer string`);
+  }
+  return normalized;
+};
+
 export const validateCaption = (caption?: string) => {
   if (!caption) return null;
   const trimmed = caption.trim();

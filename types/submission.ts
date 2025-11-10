@@ -24,6 +24,26 @@ export type Submission = {
   createdAt: string;
 };
 
+export type SubmissionUserResponse = {
+  id: string;
+  username: string;
+  is_premium?: boolean | null;
+};
+
+export type SubmissionUser = {
+  id: string;
+  username: string;
+  isPremium: boolean;
+};
+
+export type SubmissionWithUserResponse = SubmissionResponse & {
+  user: SubmissionUserResponse;
+};
+
+export type SubmissionWithUser = Submission & {
+  user: SubmissionUser;
+};
+
 export function normalizeSubmission(record: SubmissionResponse): Submission {
   return {
     id: record.id,
@@ -36,5 +56,16 @@ export function normalizeSubmission(record: SubmissionResponse): Submission {
     height: record.height,
     isRemoved: record.is_removed,
     createdAt: record.created_at,
+  };
+}
+
+export function normalizeSubmissionWithUser(record: SubmissionWithUserResponse): SubmissionWithUser {
+  return {
+    ...normalizeSubmission(record),
+    user: {
+      id: record.user.id,
+      username: record.user.username,
+      isPremium: Boolean(record.user.is_premium),
+    },
   };
 }

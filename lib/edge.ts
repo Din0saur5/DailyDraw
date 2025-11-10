@@ -11,6 +11,8 @@ export type EdgeFunctionName =
 
 type EdgeInvokeOptions = {
   body?: Record<string, unknown> | null;
+  query?: Record<string, string | number | boolean | null | undefined>;
+  method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 };
 
 export async function invokeEdge<TResponse>(
@@ -21,8 +23,11 @@ export async function invokeEdge<TResponse>(
     throw new Error('Supabase client is not configured.');
   }
 
-  const { data, error } = await supabase.functions.invoke<TResponse>(name, {
+  const targetName = buildTargetName(name, options.query);
+
+  const { data, error } = await supabase.functions.invoke<TResponse>(targetName, {
     body: options.body ?? undefined,
+    method: options.method,
   });
 
   if (error) {
@@ -31,6 +36,20 @@ export async function invokeEdge<TResponse>(
 
   return data as TResponse;
 }
+
+const buildTargetName = (
+  base: EdgeFunctionName,
+  query?: Record<string, string | number | boolean | null | undefined>,
+) => {
+  if (!query) return base;
+  const params = new URLSearchParams();
+  Object.entries(query).forEach(([key, value]) => {
+    if (value === undefined || value === null) return;
+    params.append(key, String(value));
+  });
+  const search = params.toString();
+  return search ? `${base}?${search}` : base;
+};
 
 async function formatEdgeError(error: any): Promise<string> {
   const defaultMessage = typeof error?.message === 'string' ? error.message : 'Request failed';

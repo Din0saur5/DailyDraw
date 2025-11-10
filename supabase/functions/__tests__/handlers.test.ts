@@ -158,12 +158,64 @@ describe('Edge function core handlers', () => {
     await expect(handleFeedRequest({ submissionsRepo }, {})).rejects.toBeInstanceOf(HttpError);
   });
 
+  it('passes pagination inputs to feed repo', async () => {
+    const submissionsRepo = { listFeed: jest.fn().mockResolvedValue([]) };
+    await handleFeedRequest(
+      { submissionsRepo },
+      {
+        dailyPromptId: '00000000-0000-4000-8000-000000000000',
+        limit: '25',
+        cursor: '2024-05-01T00:00:00Z',
+      },
+    );
+
+    expect(submissionsRepo.listFeed).toHaveBeenCalledWith({
+      dailyPromptId: '00000000-0000-4000-8000-000000000000',
+      limit: 25,
+      cursor: '2024-05-01T00:00:00.000Z',
+    });
+  });
+
+  it('caps feed limit at 50 entries', async () => {
+    const submissionsRepo = { listFeed: jest.fn().mockResolvedValue([]) };
+    await handleFeedRequest(
+      { submissionsRepo },
+      { dailyPromptId: '00000000-0000-4000-8000-000000000000', limit: 500 },
+    );
+
+    expect(submissionsRepo.listFeed).toHaveBeenCalledWith({
+      dailyPromptId: '00000000-0000-4000-8000-000000000000',
+      limit: 50,
+      cursor: undefined,
+    });
+  });
+
+  it('rejects invalid cursor values for feed', async () => {
+    const submissionsRepo = { listFeed: jest.fn() };
+    await expect(
+      handleFeedRequest(
+        { submissionsRepo },
+        { dailyPromptId: '00000000-0000-4000-8000-000000000000', cursor: 'not-a-date' },
+      ),
+    ).rejects.toBeInstanceOf(HttpError);
+  });
+
   it('validates report reason length', async () => {
     const reportsRepo = { createReport: jest.fn() };
     await expect(
       handleReportCreate(
         { reportsRepo, currentUserId: 'user1' },
-        { submissionId: '00000000-0000-4000-8000-000000000000', reason: 'no' },
+        { submissionId: '42', reason: 'no' },
+      ),
+    ).rejects.toBeInstanceOf(HttpError);
+  });
+
+  it('requires numeric submissionId for reports', async () => {
+    const reportsRepo = { createReport: jest.fn() };
+    await expect(
+      handleReportCreate(
+        { reportsRepo, currentUserId: 'user1' },
+        { submissionId: 'not-an-id', reason: 'Spam' },
       ),
     ).rejects.toBeInstanceOf(HttpError);
   });

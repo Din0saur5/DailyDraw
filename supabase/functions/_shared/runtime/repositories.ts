@@ -107,16 +107,20 @@ export const createRepositories = (client: SupabaseClient) => {
       }
       return (data as SubmissionRecord | null) ?? null;
     },
-    async listFeed({ dailyPromptId, limit }) {
-      const { data, error } = await client
+    async listFeed({ dailyPromptId, limit, cursor }) {
+      let query = client
         .from('submissions')
         .select(
           'id,daily_prompt_id,user_id,caption,original_key,mime_type,width,height,is_removed,created_at,user:user_public(id,username,is_premium)',
         )
         .eq('daily_prompt_id', dailyPromptId)
-        .eq('is_removed', false)
-        .order('created_at', { ascending: false })
-        .limit(limit);
+        .eq('is_removed', false);
+
+      if (cursor) {
+        query = query.lt('created_at', cursor);
+      }
+
+      const { data, error } = await query.order('created_at', { ascending: false }).limit(limit);
       if (error) {
         throw createHttpError(500, error.message ?? 'Failed to load feed');
       }
