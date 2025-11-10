@@ -26,8 +26,13 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     },
     ios: {
       supportsTablet: true,
+      bundleIdentifier: 'com.dinosaur5.dailydraw',
+      infoPlist: {
+      "ITSAppUsesNonExemptEncryption": false
+    }
     },
     android: {
+      package: 'com.dinosaur5.dailydraw',
       adaptiveIcon: {
         foregroundImage: './assets/images/adaptive-icon.png',
         backgroundColor: '#ffffff',

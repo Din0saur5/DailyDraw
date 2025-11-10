@@ -11,6 +11,7 @@ Expo Router app for the DailyDraw mobile experience. The build spec lives in `do
    export EXPO_PUBLIC_SUPABASE_ANON_KEY="..."
    # optional — defaults to true in dev builds
    export EXPO_PUBLIC_ALLOW_DEV_AUTH_BYPASS=true
+   export EXPO_PUBLIC_IAP_PRODUCT_ID="com.dailydraw.premium.monthly"
    ```
 3. Run `npm start` and choose the platform target (`i`, `a`, or `w` in Expo CLI).
 4. `npm run lint`, `npm run test`, and `npm run typecheck` are wired up for local validation before opening a PR.
@@ -21,6 +22,7 @@ Expo Router app for the DailyDraw mobile experience. The build spec lives in `do
 - `EXPO_PUBLIC_SUPABASE_URL`
 - `EXPO_PUBLIC_SUPABASE_ANON_KEY`
 - `EXPO_PUBLIC_ALLOW_DEV_AUTH_BYPASS` (optional, defaults to `true` during development)
+- `EXPO_PUBLIC_IAP_PRODUCT_ID` (Apple product identifier for premium subscription)
 
 ### Supabase Edge functions
 - `SUPABASE_URL`
