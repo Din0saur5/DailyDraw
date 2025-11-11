@@ -1,9 +1,10 @@
 import { PropsWithChildren } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Image, StyleSheet, Text, View } from 'react-native';
 import { usePathname } from 'expo-router';
 import { env } from '@/lib/env';
 import { useSessionStore } from '@/stores/useSessionStore';
 import { AuthScreen } from '@/components/auth/AuthScreen';
+import { palette } from '@/constants/palette';
 
 export function AuthGate({ children }: PropsWithChildren) {
   const status = useSessionStore((state) => state.status);
@@ -20,7 +21,8 @@ export function AuthGate({ children }: PropsWithChildren) {
   if (status === 'loading') {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator />
+        <Image source={require('@/assets/images/dailydrawlogo.png')} style={styles.loadingLogo} />
+        <ActivityIndicator color={palette.black} />
         <Text style={styles.helper}>Preparing session…</Text>
       </View>
     );
@@ -48,9 +50,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 24,
     gap: 12,
+    backgroundColor: palette.canvas,
   },
   helper: {
     textAlign: 'center',
-    color: '#555',
+    color: palette.black,
+  },
+  loadingLogo: {
+    height: 72,
+    width: 160,
+    resizeMode: 'contain',
   },
 });

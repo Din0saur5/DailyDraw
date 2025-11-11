@@ -13,6 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Linking from 'expo-linking';
 import { supabase } from '@/lib/supabase';
+import { palette } from '@/constants/palette';
 
 type AuthMode = 'signIn' | 'signUp';
 
@@ -270,7 +271,7 @@ export function AuthScreen({ allowDevBypass, onDevBypass }: Props) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: palette.canvas,
   },
   flex: {
     flex: 1,
@@ -281,11 +282,13 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   title: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: '700',
+    color: palette.black,
   },
   helper: {
     color: '#4b5563',
+    lineHeight: 20,
   },
   tabRow: {
     flexDirection: 'row',
@@ -295,17 +298,18 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 10,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: palette.gray,
     borderRadius: 999,
+    backgroundColor: '#fffef8',
   },
   tabButtonSelected: {
-    backgroundColor: '#111827',
-    borderColor: '#111827',
+    backgroundColor: palette.black,
+    borderColor: palette.black,
   },
   tabLabel: {
     textAlign: 'center',
     fontWeight: '600',
-    color: '#374151',
+    color: '#4b5563',
   },
   tabLabelSelected: {
     color: '#fff',
@@ -315,15 +319,17 @@ const styles = StyleSheet.create({
   },
   fieldLabel: {
     fontWeight: '600',
-    color: '#111827',
+    color: palette.black,
   },
   input: {
     borderWidth: 1,
-    borderColor: '#d1d5db',
+    borderColor: palette.gray,
     borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 16,
+    color: palette.black,
+    backgroundColor: '#fffef8',
   },
   inputError: {
     borderColor: '#ef4444',
@@ -336,7 +342,7 @@ const styles = StyleSheet.create({
   },
   primaryButton: {
     borderRadius: 12,
-    backgroundColor: '#111827',
+    backgroundColor: palette.black,
     paddingVertical: 14,
     alignItems: 'center',
   },
@@ -352,7 +358,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: '#9ca3af',
+    borderColor: palette.gray,
     paddingVertical: 10,
   },
   secondaryButtonText: {
