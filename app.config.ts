@@ -28,8 +28,10 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       supportsTablet: true,
       bundleIdentifier: 'com.dinosaur5.dailydraw',
       infoPlist: {
-      "ITSAppUsesNonExemptEncryption": false
-    }
+    ITSAppUsesNonExemptEncryption: false,
+    NSPhotoLibraryUsageDescription: 'DailyDraw needs access to your photos to upload artwork.',
+    NSCameraUsageDescription: 'DailyDraw can use your camera to capture new drawings.',
+  },
     },
     android: {
       package: 'com.dinosaur5.dailydraw',
