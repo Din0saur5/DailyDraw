@@ -1,6 +1,7 @@
 import { createHttpError } from '../core/errors.ts';
 import type {
   DailyPromptRecord,
+  PremiumMetadataInput,
   PromptsRepository,
   ReportsRepository,
   SubmissionRecord,
@@ -52,6 +53,91 @@ export const createRepositories = (client: SupabaseClient) => {
           .single(),
       );
       return data;
+    },
+    async updatePremiumMetadata(payload: PremiumMetadataInput) {
+      const { error } = await client
+        .from('users')
+        .update({
+          is_premium: payload.isPremium,
+          apple_product_id: payload.appleProductId ?? null,
+          apple_latest_transaction_id: payload.appleLatestTransactionId ?? null,
+          apple_environment: payload.appleEnvironment ?? null,
+          premium_expires_at: payload.premiumExpiresAt ?? null,
+        })
+        .eq('id', payload.userId);
+      if (error) {
+        throw createHttpError(
+          500,
+          error.message ?? 'Failed to update premium metadata',
+          error,
+        );
+      }
+    },
+    async deleteUser(userId) {
+      const { data: submissionRows, error: submissionLookupError } = await client
+        .from('submissions')
+        .select('id')
+        .eq('user_id', userId);
+      if (submissionLookupError) {
+        throw createHttpError(
+          500,
+          submissionLookupError.message ?? 'Failed to load user submissions',
+          submissionLookupError,
+        );
+      }
+      const submissionIds = (submissionRows ?? []).map((row: { id: string | number }) =>
+        row.id.toString(),
+      );
+
+      const { error: reportError } = await client.from('reports').delete().eq('reporter_id', userId);
+      if (reportError) {
+        throw createHttpError(
+          500,
+          reportError.message ?? 'Failed to delete user reports',
+          reportError,
+        );
+      }
+
+      if (submissionIds.length > 0) {
+        const { error: reportedSubmissionsError } = await client
+          .from('reports')
+          .delete()
+          .in('submission_id', submissionIds);
+        if (reportedSubmissionsError) {
+          throw createHttpError(
+            500,
+            reportedSubmissionsError.message ?? 'Failed to delete reports tied to submissions',
+            reportedSubmissionsError,
+          );
+        }
+      }
+
+      const { error: submissionError } = await client.from('submissions').delete().eq('user_id', userId);
+      if (submissionError) {
+        throw createHttpError(
+          500,
+          submissionError.message ?? 'Failed to delete user submissions',
+          submissionError,
+        );
+      }
+
+      const { error: profileError } = await client.from('users').delete().eq('id', userId);
+      if (profileError) {
+        throw createHttpError(
+          500,
+          profileError.message ?? 'Failed to delete user profile',
+          profileError,
+        );
+      }
+
+      const { error: authError } = await client.auth.admin.deleteUser(userId);
+      if (authError && authError.status !== 404) {
+        throw createHttpError(
+          500,
+          authError.message ?? 'Failed to delete user account',
+          authError,
+        );
+      }
     },
   };
 

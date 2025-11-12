@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { useSessionStore } from '@/stores/useSessionStore';
 import { useSetUsernameMutation } from '@/lib/mutations/username';
+import { useDeleteAccountMutation } from '@/lib/mutations/account';
 import { supabase } from '@/lib/supabase';
 import { validateUsernameInput, formatUtcToday } from '@/lib/validation';
 import { palette } from '@/constants/palette';
@@ -17,6 +18,10 @@ export default function SettingsScreen() {
   const [localError, setLocalError] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const setUsernameMutation = useSetUsernameMutation();
+  const {
+    mutateAsync: deleteAccount,
+    isPending: isDeletingAccount,
+  } = useDeleteAccountMutation();
 
   useEffect(() => {
     setUsername(profile?.username ?? '');
@@ -55,6 +60,32 @@ export default function SettingsScreen() {
       setStatus('unauthenticated');
     }
   }, [setDevBypass, setProfile, setSession, setStatus]);
+
+  const handleDeleteAccount = useCallback(() => {
+    if (isDeletingAccount) return;
+
+    Alert.alert(
+      'Delete account',
+      'This permanently removes your profile and submissions. This action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete account',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteAccount();
+            } catch (error) {
+              Alert.alert(
+                'Unable to delete account',
+                error instanceof Error ? error.message : 'Please try again later.',
+              );
+            }
+          },
+        },
+      ],
+    );
+  }, [deleteAccount, isDeletingAccount]);
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
@@ -98,6 +129,22 @@ export default function SettingsScreen() {
         <Text style={styles.cardBody}>Sign out of DailyDraw on this device.</Text>
         <Pressable style={styles.secondaryButton} onPress={handleLogout}>
           <Text style={styles.secondaryButtonText}>Logout</Text>
+        </Pressable>
+      </View>
+
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Delete account</Text>
+        <Text style={styles.cardBody}>
+          Permanently remove your account and submissions from DailyDraw. This cannot be undone.
+        </Text>
+        <Pressable
+          style={[styles.destructiveButton, isDeletingAccount && styles.disabledButton]}
+          disabled={isDeletingAccount}
+          onPress={handleDeleteAccount}
+        >
+          <Text style={styles.destructiveButtonText}>
+            {isDeletingAccount ? 'Deleting…' : 'Delete account'}
+          </Text>
         </Pressable>
       </View>
 
@@ -179,6 +226,16 @@ const styles = StyleSheet.create({
   },
   secondaryButtonText: {
     color: palette.black,
+    fontWeight: '600',
+  },
+  destructiveButton: {
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+    backgroundColor: '#b91c1c',
+  },
+  destructiveButtonText: {
+    color: '#fff',
     fontWeight: '600',
   },
   disabledButton: {

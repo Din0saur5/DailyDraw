@@ -85,9 +85,11 @@
 | `/prompts/today` | GET | none | `DailyPrompt[]` | Checks `timezone('UTC', now())::date`. |
 | `/feed` | GET | `?dailyPromptId=&cursor=&limit=` | `SubmissionWithUser[]` | Joins `public.users.username`, filters `is_removed=false`. `cursor` uses `created_at` ISO timestamps; `limit` ≤50 (default 20). |
 | `/reports` | POST | `{ submissionId, reason }` | `204` | `submissionId` is the bigint submission ID (send as decimal string). Trigger flips `is_removed` after threshold. |
+| `/premium/set` | POST | `{ isPremium, receiptData, productId, transactionId }` | `{ isPremium, productId, expiresAt }` | Verifies Apple StoreKit receipt (requires `APPLE_IAP_SHARED_SECRET`) and updates `users.is_premium`. |
 
 Implementation notes:
 - Edge functions rely on `createClient` with `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY`. Validate `supabase.auth.getUser()` on each request.
+- Receipt verification function additionally requires `APPLE_IAP_SHARED_SECRET` to call Apple’s `/verifyReceipt` API.
 - Provide shared util module for error responses (HTTP 400/401/409).
 - Wrap R2 signing using AWS SDK (S3 compatible) or `cloudflare` package; keep TTL ≤5 minutes.
 

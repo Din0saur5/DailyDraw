@@ -32,6 +32,7 @@ Expo Router app for the DailyDraw mobile experience. The build spec lives in `do
 - `R2_SECRET_ACCESS_KEY`
 - `R2_BUCKET_NAME` (e.g., `dailydraw-originals`)
 - `R2_PUBLIC_ENDPOINT` (or custom domain) if different from the default Cloudflare S3 endpoint
+- `APPLE_IAP_SHARED_SECRET` (App Store shared secret for receipt validation)
 
 ### Render cleanup worker (cron)
 - `SUPABASE_URL`

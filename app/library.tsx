@@ -1,3 +1,4 @@
+import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import {
@@ -15,15 +16,24 @@ import {
   View,
 } from 'react-native';
 
+import { palette } from '@/constants/palette';
+import {
+  endIapConnection,
+  initIapConnection,
+  loadPremiumProductDetails,
+  purchasePremium,
+  restorePremium,
+  type PremiumProductDetails,
+} from '@/lib/iap';
+import { usePremiumStatusMutation } from '@/lib/mutations/premium';
+import { fetchUserProfile } from '@/lib/profile';
 import { useLibraryQuery, useSignedImageUrl } from '@/lib/queries';
 import { useSessionStore } from '@/stores/useSessionStore';
 import { LibraryEntry, formatPromptLabel } from '@/types/library';
-import { purchasePremium, restorePremium, initIapConnection, endIapConnection } from '@/lib/iap';
-import { usePremiumStatusMutation } from '@/lib/mutations/premium';
-import { palette } from '@/constants/palette';
 
 export default function LibraryScreen() {
   const profile = useSessionStore((state) => state.profile);
+  const setProfile = useSessionStore((state) => state.setProfile);
 
   useEffect(() => {
     initIapConnection();
@@ -31,6 +41,26 @@ export default function LibraryScreen() {
       endIapConnection();
     };
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!profile?.id) return undefined;
+
+      let isActive = true;
+
+      const refreshProfile = async () => {
+        const latest = await fetchUserProfile(profile.id);
+        if (latest && isActive) {
+          setProfile(latest);
+        }
+      };
+
+      refreshProfile();
+      return () => {
+        isActive = false;
+      };
+    }, [profile?.id, setProfile]),
+  );
 
   if (!profile) {
     return (
@@ -187,17 +217,39 @@ function LibraryCard({ entry }: { entry: LibraryEntry }) {
 
 function PremiumUpsell() {
   const [iapBusy, setIapBusy] = useState(false);
+  const [productDetails, setProductDetails] = useState<PremiumProductDetails | null>(null);
   const premiumMutation = usePremiumStatusMutation();
   const busy = iapBusy || premiumMutation.isPending;
+  const upgradeLabel = productDetails?.displayPrice
+    ? `Go Premium – ${productDetails.displayPrice}`
+    : 'Go Premium';
+
+  useEffect(() => {
+    let isMounted = true;
+    loadPremiumProductDetails()
+      .then((details) => {
+        if (isMounted) {
+          setProductDetails(details);
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const handleUpgrade = useCallback(async () => {
     try {
       setIapBusy(true);
       const purchase = await purchasePremium();
+      if (!purchase.receiptData) {
+        throw new Error('Apple did not return a receipt for this purchase. Please try again.');
+      }
       await premiumMutation.mutateAsync({
         isPremium: true,
         productId: purchase.productId,
         transactionId: purchase.transactionId,
+        receiptData: purchase.receiptData,
       });
       Alert.alert('Welcome to Premium', 'Your upload history is now unlocked.');
     } catch (error) {
@@ -215,10 +267,14 @@ function PremiumUpsell() {
         Alert.alert('No purchases found', 'Use the same Apple ID used during checkout.');
         return;
       }
+      if (!purchase.receiptData) {
+        throw new Error('Apple could not locate a receipt to restore. Try purchasing again.');
+      }
       await premiumMutation.mutateAsync({
         isPremium: true,
         productId: purchase.productId,
         transactionId: purchase.transactionId,
+        receiptData: purchase.receiptData,
       });
       Alert.alert('Restored', 'Premium status restored on this device.');
     } catch (error) {
@@ -237,16 +293,25 @@ function PremiumUpsell() {
       </Text>
       <View style={styles.upsellCard}>
         <Text style={styles.cardTitle}>Premium perks</Text>
-        <Text style={styles.cardBody}>• Access all past uploads in your library.</Text>
-        <Text style={styles.cardBody}>• Restore purchases across devices.</Text>
-        <Text style={styles.cardBody}>• Support ongoing prompt + moderation drops.</Text>
+        <Text style={styles.cardBody}>• Shields uploads from the daily sweep.</Text>
+        <Text style={styles.cardBody}>• Search past posts by prompt, date, or difficulty.</Text>
+        <Text style={styles.cardBody}>• Support ongoing prompt drops and moderation.</Text>
       </View>
+      {productDetails?.displayPrice && (
+        <Text style={styles.priceCopy}>
+          {productDetails.displayPrice} billed to your Apple ID (auto-renewing subscription).
+        </Text>
+      )}
       <Pressable
         style={[styles.primaryButton, busy && styles.disabledButton]}
         onPress={handleUpgrade}
         disabled={busy}
       >
-        {busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryButtonText}>Go Premium</Text>}
+        {busy ? (
+          <ActivityIndicator color="#fff" />
+        ) : (
+          <Text style={styles.primaryButtonText}>{upgradeLabel}</Text>
+        )}
       </Pressable>
       <Pressable
         style={[styles.secondaryButton, busy && styles.disabledButton]}
@@ -256,7 +321,7 @@ function PremiumUpsell() {
         <Text style={styles.secondaryButtonText}>Restore purchase</Text>
       </Pressable>
       <Text style={styles.disclaimer}>
-        Purchases processed through Apple. Subscriptions renew automatically unless cancelled at
+        Purchases are processed by Apple. Subscriptions renew automatically unless cancelled at
         least 24 hours before the end of the period.
       </Text>
     </ScrollView>
@@ -456,6 +521,10 @@ const styles = StyleSheet.create({
   },
   cardBody: {
     color: '#4b5563',
+  },
+  priceCopy: {
+    color: '#4b5563',
+    fontSize: 14,
   },
   primaryButton: {
     borderRadius: 14,

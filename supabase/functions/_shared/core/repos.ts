@@ -10,7 +10,18 @@ export interface PromptsRepository {
 
 export interface UsersRepository {
   isUsernameTaken(username: string, excludeUserId: string): Promise<boolean>;
-  updateUsername(userId: string, username: string): Promise<UserRecord>;
+  updateUsername(userId: string, username: string): Promise<{} | undefined>;
+  deleteUser(userId: string): Promise<void>;
+  updatePremiumMetadata(payload: PremiumMetadataInput): Promise<void>;
+}
+
+export interface PremiumMetadataInput {
+  userId: string;
+  isPremium: boolean;
+  appleProductId?: string | null;
+  appleLatestTransactionId?: string | null;
+  appleEnvironment?: string | null;
+  premiumExpiresAt?: string | null;
 }
 
 export interface SubmissionsRepository {

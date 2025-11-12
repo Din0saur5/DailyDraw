@@ -1,6 +1,7 @@
 import { PropsWithChildren, useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import { supabase } from '@/lib/supabase';
+import { fetchUserProfile } from '@/lib/profile';
 import { useSessionStore } from '@/stores/useSessionStore';
 
 export function SessionProvider({ children }: PropsWithChildren) {
@@ -28,24 +29,9 @@ export function SessionProvider({ children }: PropsWithChildren) {
     let isMounted = true;
 
     const loadProfile = async (userId: string) => {
-      const { data, error } = await client
-        .from('user_public')
-        .select('id,username,is_premium')
-        .eq('id', userId)
-        .maybeSingle();
-
-      if (!isMounted || error || !data) {
-        if (error) {
-          console.warn('[session] Failed to load profile', error.message);
-        }
-        return;
-      }
-
-      setProfile({
-        id: data.id,
-        username: data.username,
-        isPremium: data.is_premium,
-      });
+      const profile = await fetchUserProfile(userId);
+      if (!isMounted || !profile) return;
+      setProfile(profile);
     };
 
     const clearSession = () => {

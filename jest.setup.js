@@ -21,7 +21,20 @@ jest.mock('react-native-iap', () => ({
     productId: 'test-product',
     transactionId: 'txn-123',
     transactionDate: new Date().toISOString(),
+    transactionReceipt: 'mock-receipt',
   }),
   getAvailablePurchases: jest.fn().mockResolvedValue([]),
   finishTransaction: jest.fn().mockResolvedValue(undefined),
+  fetchProducts: jest.fn().mockResolvedValue([
+    {
+      id: 'test-product',
+      productId: 'test-product',
+      title: 'Premium Monthly',
+      description: 'Full history access',
+      displayPrice: '$4.99',
+      currency: 'USD',
+      type: 'subs',
+      platform: 'ios',
+    },
+  ]),
 }));

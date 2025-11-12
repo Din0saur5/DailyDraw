@@ -1,4 +1,4 @@
-import { render } from '@testing-library/react-native';
+import { act, render } from '@testing-library/react-native';
 
 import LibraryScreen from '@/app/library';
 import { useSessionStore } from '@/stores/useSessionStore';
@@ -12,11 +12,30 @@ jest.mock('@/lib/queries', () => ({
   useSignedImageUrl: (...args: any[]) => mockUseSignedImageUrl(...args),
 }));
 
+jest.mock('@/lib/profile', () => ({
+  fetchUserProfile: jest.fn().mockResolvedValue(null),
+}));
+
 jest.mock('@/lib/iap', () => ({
   initIapConnection: jest.fn(),
   endIapConnection: jest.fn(),
-  purchasePremium: jest.fn().mockResolvedValue({ productId: 'test', transactionId: 'txn' }),
-  restorePremium: jest.fn().mockResolvedValue({ productId: 'test', transactionId: 'txn' }),
+  purchasePremium: jest.fn().mockResolvedValue({
+    productId: 'test',
+    transactionId: 'txn',
+    receiptData: 'mock-receipt',
+  }),
+  restorePremium: jest.fn().mockResolvedValue({
+    productId: 'test',
+    transactionId: 'txn',
+    receiptData: 'mock-receipt',
+  }),
+  loadPremiumProductDetails: jest.fn().mockResolvedValue({
+    id: 'test',
+    title: 'Premium',
+    description: 'Full access',
+    displayPrice: '$4.99',
+    currency: 'USD',
+  }),
 }));
 
 jest.mock('@/lib/mutations/premium', () => ({
@@ -33,7 +52,7 @@ describe('LibraryScreen', () => {
     });
   });
 
-  it('shows premium upsell for non-premium users', () => {
+  it('shows premium upsell for non-premium users', async () => {
     mockUseLibraryQuery.mockReturnValue({});
 
     useSessionStore.setState({
@@ -41,10 +60,11 @@ describe('LibraryScreen', () => {
     });
 
     const { getAllByText } = render(<LibraryScreen />);
+    await act(async () => {});
     expect(getAllByText(/Go Premium/i).length).toBeGreaterThan(0);
   });
 
-  it('renders library entries for premium users', () => {
+  it('renders library entries for premium users', async () => {
     mockUseLibraryQuery.mockReturnValue({
       data: {
         pages: [
@@ -92,7 +112,18 @@ describe('LibraryScreen', () => {
     });
 
     const { getByText } = render(<LibraryScreen />);
+    await act(async () => {});
     expect(getByText(/Your library/i)).toBeTruthy();
     expect(getByText(/Draw a lighthouse/i)).toBeTruthy();
   });
 });
+jest.mock('expo-router', () => ({
+  useFocusEffect: (effect: () => (() => void) | void) => {
+    const cleanup = effect();
+    return () => {
+      if (typeof cleanup === 'function') {
+        cleanup();
+      }
+    };
+  },
+}));

@@ -7,6 +7,8 @@ import { handleImageSignGet } from '../_shared/core/images.ts';
 import { handlePromptsToday } from '../_shared/core/prompts.ts';
 import { handleFeedRequest } from '../_shared/core/feed.ts';
 import { handleReportCreate } from '../_shared/core/reports.ts';
+import { handleDeleteAccount } from '../_shared/core/users.ts';
+import { handlePremiumStatus } from '../_shared/core/premium.ts';
 import { HttpError } from '../_shared/core/errors.ts';
 
 describe('Edge function core handlers', () => {
@@ -218,5 +220,93 @@ describe('Edge function core handlers', () => {
         { submissionId: 'not-an-id', reason: 'Spam' },
       ),
     ).rejects.toBeInstanceOf(HttpError);
+  });
+
+  it('deletes the current user account', async () => {
+    const usersRepo = { deleteUser: jest.fn().mockResolvedValue(undefined) };
+
+    const result = await handleDeleteAccount({ usersRepo, currentUserId: 'user-123' });
+
+    expect(result).toEqual({ ok: true });
+    expect(usersRepo.deleteUser).toHaveBeenCalledWith('user-123');
+  });
+
+  it('updates premium metadata after successful Apple verification', async () => {
+    const usersRepo: any = {
+      updatePremiumMetadata: jest.fn().mockResolvedValue(undefined),
+    };
+    const response = {
+      status: 0,
+      environment: 'Sandbox',
+      latest_receipt_info: [
+        {
+          product_id: 'com.dailydraw.premium',
+          expires_date_ms: (Date.now() + 60_000).toString(),
+          original_transaction_id: 'orig-1',
+          transaction_id: 'txn-1',
+        },
+      ],
+    };
+
+    const result = await handlePremiumStatus(
+      {
+        usersRepo,
+        currentUserId: 'user-1',
+        verifyReceipt: jest.fn().mockResolvedValue(response),
+        now: () => new Date(),
+      },
+      {
+        isPremium: true,
+        receiptData: 'mock-receipt',
+        productId: 'com.dailydraw.premium',
+      },
+    );
+
+    expect(result.isPremium).toBe(true);
+    expect(usersRepo.updatePremiumMetadata).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: 'user-1',
+        isPremium: true,
+        appleProductId: 'com.dailydraw.premium',
+        appleLatestTransactionId: 'orig-1',
+      }),
+    );
+  });
+
+  it('rejects expired Apple receipts', async () => {
+    const usersRepo: any = {
+      updatePremiumMetadata: jest.fn().mockResolvedValue(undefined),
+    };
+    const verifyReceipt = jest.fn().mockResolvedValue({
+      status: 0,
+      environment: 'Sandbox',
+      latest_receipt_info: [
+        {
+          product_id: 'com.dailydraw.premium',
+          expires_date_ms: (Date.now() - 60_000).toString(),
+          transaction_id: 'txn-2',
+        },
+      ],
+    });
+
+    await expect(
+      handlePremiumStatus(
+        {
+          usersRepo,
+          currentUserId: 'user-1',
+          verifyReceipt,
+          now: () => new Date(),
+        },
+        {
+          isPremium: true,
+          receiptData: 'mock',
+          productId: 'com.dailydraw.premium',
+        },
+      ),
+    ).rejects.toBeInstanceOf(HttpError);
+
+    expect(usersRepo.updatePremiumMetadata).not.toHaveBeenCalledWith(
+      expect.objectContaining({ isPremium: true }),
+    );
   });
 });

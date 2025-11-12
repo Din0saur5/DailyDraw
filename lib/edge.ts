@@ -2,12 +2,14 @@ import { supabase } from '@/lib/supabase';
 
 export type EdgeFunctionName =
   | 'username-set'
+  | 'users-delete'
   | 'uploads-sign'
   | 'submissions-create'
   | 'images-sign-get'
   | 'prompts-today'
   | 'feed'
-  | 'reports';
+  | 'reports'
+  | 'premium-set';
 
 type EdgeInvokeOptions = {
   body?: Record<string, unknown> | null;
