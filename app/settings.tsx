@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
-import { useSessionStore } from '@/stores/useSessionStore';
-import { useSetUsernameMutation } from '@/lib/mutations/username';
-import { useDeleteAccountMutation } from '@/lib/mutations/account';
-import { supabase } from '@/lib/supabase';
-import { validateUsernameInput, formatUtcToday } from '@/lib/validation';
 import { palette } from '@/constants/palette';
+import { useDeleteAccountMutation } from '@/lib/mutations/account';
+import { useSetUsernameMutation } from '@/lib/mutations/username';
+import { supabase } from '@/lib/supabase';
+import { formatUtcToday, validateUsernameInput } from '@/lib/validation';
+import { useSessionStore } from '@/stores/useSessionStore';
 
 export default function SettingsScreen() {
   const profile = useSessionStore((state) => state.profile);
@@ -27,7 +27,7 @@ export default function SettingsScreen() {
     setUsername(profile?.username ?? '');
   }, [profile?.username]);
 
-  const subscriptionLabel = profile?.isPremium ? 'Premium' : 'Free (resets daily)';
+  const subscriptionLabel = profile?.isPremium ? 'Premium' : 'Free';
   const utcPromptDate = useMemo(() => formatUtcToday(), []);
 
   const handleUsernameSave = useCallback(async () => {

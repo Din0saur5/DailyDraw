@@ -242,6 +242,7 @@ function PremiumUpsell() {
     try {
       setIapBusy(true);
       const purchase = await purchasePremium();
+      console.log('[iap] purchase result', purchase);
       if (!purchase.receiptData) {
         throw new Error('Apple did not return a receipt for this purchase. Please try again.');
       }

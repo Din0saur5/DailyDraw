@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { palette } from '@/constants/palette';
 import { countDownToUtcMidnight, formatCountdown } from '@/lib/dates';
 import { useTodayPrompts } from '@/lib/queries';
 import {
@@ -23,11 +24,11 @@ import {
   PromptDifficulty,
   difficultyLabels,
 } from '@/types/prompt';
-import { palette } from '@/constants/palette';
 
 const rules = [
   'One original upload per prompt per day. Prompts refresh at midnight UTC daily!',
   'Respect the community: keep submissions safe for work.',
+  'All submissions from Free accounts are wiped from our servers at midnight UTC daily. Upgrade to premium to maintain access',
   'No AI generated art',
   'Report anything that feels off—moderators review every flag.',
 ];
