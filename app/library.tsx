@@ -22,8 +22,7 @@ import {
   initIapConnection,
   loadPremiumProductDetails,
   purchasePremium,
-  restorePremium,
-  type PremiumProductDetails,
+  type PremiumProductDetails
 } from '@/lib/iap';
 import { usePremiumStatusMutation } from '@/lib/mutations/premium';
 import { fetchUserProfile } from '@/lib/profile';
@@ -260,30 +259,30 @@ function PremiumUpsell() {
     }
   }, [premiumMutation]);
 
-  const handleRestore = useCallback(async () => {
-    try {
-      setIapBusy(true);
-      const purchase = await restorePremium();
-      if (!purchase) {
-        Alert.alert('No purchases found', 'Use the same Apple ID used during checkout.');
-        return;
-      }
-      if (!purchase.receiptData) {
-        throw new Error('Apple could not locate a receipt to restore. Try purchasing again.');
-      }
-      await premiumMutation.mutateAsync({
-        isPremium: true,
-        productId: purchase.productId,
-        transactionId: purchase.transactionId,
-        receiptData: purchase.receiptData,
-      });
-      Alert.alert('Restored', 'Premium status restored on this device.');
-    } catch (error) {
-      Alert.alert('Restore failed', extractMessage(error));
-    } finally {
-      setIapBusy(false);
-    }
-  }, [premiumMutation]);
+  // const handleRestore = useCallback(async () => {
+  //   try {
+  //     setIapBusy(true);
+  //     const purchase = await restorePremium();
+  //     if (!purchase) {
+  //       Alert.alert('No purchases found', 'Use the same Apple ID used during checkout.');
+  //       return;
+  //     }
+  //     if (!purchase.receiptData) {
+  //       throw new Error('Apple could not locate a receipt to restore. Try purchasing again.');
+  //     }
+  //     await premiumMutation.mutateAsync({
+  //       isPremium: true,
+  //       productId: purchase.productId,
+  //       transactionId: purchase.transactionId,
+  //       receiptData: purchase.receiptData,
+  //     });
+  //     Alert.alert('Restored', 'Premium status restored on this device.');
+  //   } catch (error) {
+  //     Alert.alert('Restore failed', extractMessage(error));
+  //   } finally {
+  //     setIapBusy(false);
+  //   }
+  // }, [premiumMutation]);
 
   return (
     <ScrollView contentContainerStyle={styles.upsellContent}>
@@ -314,13 +313,13 @@ function PremiumUpsell() {
           <Text style={styles.primaryButtonText}>{upgradeLabel}</Text>
         )}
       </Pressable>
-      <Pressable
+      {/* <Pressable
         style={[styles.secondaryButton, busy && styles.disabledButton]}
         onPress={handleRestore}
         disabled={busy}
       >
         <Text style={styles.secondaryButtonText}>Restore purchase</Text>
-      </Pressable>
+      </Pressable> */}
       <Text style={styles.disclaimer}>
         Purchases are processed by Apple. Subscriptions renew automatically unless cancelled at
         least 24 hours before the end of the period.

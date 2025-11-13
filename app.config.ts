@@ -14,7 +14,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     slug: SCHEME,
     scheme: SCHEME,
     owner: 'dinosaur5',
-    version: '1.0.0',
+    version: '1.0.1',
     orientation: 'portrait',
     icon: './assets/images/icon.png',
     userInterfaceStyle: 'automatic',

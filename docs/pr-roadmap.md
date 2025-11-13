@@ -55,3 +55,9 @@ This checklist breaks the build spec into bite-sized, reviewable pull requests. 
 - Run through full UTC day rollover tests, verify RLS rules with authenticated/unauthenticated clients, and capture results.
 - Add crash/error monitoring setup (Sentry or placeholder) and ensure Supabase/Edge logs include useful metadata.
 - Review analytics hooks, finalize copy, and file any remaining backlog items (prompt seeding automation, Android billing roadmap).
+
+## PR 12 – StoreKit QA & Release Prep
+- Stand up a TestFlight build that includes the StoreKit integration and confirm purchases succeed end-to-end with a sandbox tester.
+- Document, in `README.md`, the exact steps for creating sandbox accounts, installing the build, triggering purchases/restores, and verifying premium state in Supabase.
+- Capture verification notes (logs, screenshots, timestamps) so the App Store review packet can cite successful sandbox runs.
+- Ensure the release checklist covers promoting the same build to production once QA is complete.

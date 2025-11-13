@@ -71,3 +71,42 @@ Even with password-based login the forgot-password flow still emails users—SMT
 2. `SessionProvider` listens for the `PASSWORD_RECOVERY` event, automatically routes to `/reset-password`, and that screen calls `supabase.auth.updateUser({ password })`.
 3. Email confirmations use `Linking.createURL('/auth/confirm')`; once Supabase verifies the token it redirects to that screen, which in turn navigates users back to sign in.
 4. Test both confirmation and password-reset flows on the iOS simulator (localhost URL), a device on your LAN, and an Expo tunnel/release build before launch.
+
+## StoreKit sandbox & TestFlight checklist
+Use this flow whenever you need to validate IAP before shipping a build for review.
+
+1. **Create/verify the product**  
+   - App Store Connect → My Apps → *DailyDraw* → In‑App Purchases. Confirm the product ID matches `EXPO_PUBLIC_IAP_PRODUCT_ID`.  
+   - If the status is “Ready to Submit”, finish the pricing/screenshot metadata so it reads “Ready to Submit” or “Ready for Sale”.
+
+2. **Add a sandbox tester**  
+   - App Store Connect → Users and Access → Sandbox → Testers → “+”.  
+   - Use a brand-new email that isn’t tied to any real Apple ID. Apple sends a verification email you must accept.  
+   - Save the generated Apple ID + password in 1Password or your secure vault.
+
+3. **Build for TestFlight**  
+   - Run `eas build --platform ios --profile preview` (or the profile you use for release) so the build includes the dev client + StoreKit entitlements.  
+   - Wait for EAS to finish, download the `.ipa`, and submit it to App Store Connect (EAS can upload automatically if configured).  
+   - Once processing finishes, add the build to an internal TestFlight group and install it on a physical test device.
+
+4. **Prepare the device**  
+   - On the device, Settings → App Store → Sandbox Account → sign in with the sandbox Apple ID. If you don’t see “Sandbox Account,” make sure a TestFlight build of DailyDraw is installed.  
+   - Stay signed into your real Apple ID for the main App Store entry; the sandbox login is scoped to StoreKit only.
+
+5. **Run the StoreKit flow**  
+   - Launch DailyDraw (TestFlight build), log into a Supabase user, and navigate to the Library upsell.  
+   - Tap “Go Premium,” confirm Apple’s sheet, and complete the purchase.  
+   - After completion, run the Restore button once as well to ensure receipt refreshes work.  
+   - Capture Xcode console logs (or Device Console) showing `[iap]` events plus the Supabase edge invocation.
+
+6. **Verify on Supabase**  
+   - Supabase SQL editor: `select is_premium, premium_expires_at, is_in_grace_period from public.user_public where id = '<user-id>';`  
+   - Ensure the row flipped to premium and that the expiration matches Apple’s sandbox timestamp (renewals happen every ~5 minutes).  
+   - If the row stays false, download the `premium-set` function logs (`supabase functions logs premium-set --tail`) and inspect the error.
+
+7. **Document the run**  
+   - Record the build number, tester Apple ID initials, timestamps for purchase/restore, and Supabase row output inside your release notes or PR description.  
+   - Attach screenshots of the successful StoreKit sheet and the in-app “Welcome to Premium” alert if App Review asks for proof.
+
+8. **Promote the build**  
+   - Once sandbox QA passes, move the same TestFlight build into the App Store review submission. No new build is needed as long as no code changes occur between QA and submission.
