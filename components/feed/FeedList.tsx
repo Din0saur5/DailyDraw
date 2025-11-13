@@ -18,6 +18,7 @@ import { useFeedQuery } from '@/lib/queries/feed';
 import { useSignedImageUrl } from '@/lib/queries/images';
 import { useReportSubmissionMutation } from '@/lib/mutations/reports';
 import { trackEvent } from '@/lib/analytics';
+import { getClampedAspectRatio } from '@/lib/aspect';
 
 type FeedListProps = {
   dailyPromptId: string;
@@ -203,6 +204,10 @@ type FeedCardProps = {
 function FeedCard({ item, onReport, showOwnBadge }: FeedCardProps) {
   const { data, isLoading, isError, refetch } = useSignedImageUrl(item.originalKey);
   const postedAt = useMemo(() => formatRelativeTime(item.createdAt), [item.createdAt]);
+  const imageAspectRatio = useMemo(
+    () => getClampedAspectRatio(item.width, item.height),
+    [item.height, item.width],
+  );
 
   return (
     <View style={styles.card}>
@@ -222,7 +227,7 @@ function FeedCard({ item, onReport, showOwnBadge }: FeedCardProps) {
         </View>
       )}
 
-      <View style={styles.cardImageShell}>
+      <View style={[styles.cardImageShell, { aspectRatio: imageAspectRatio }]}>
         {isLoading && (
           <View style={styles.imagePlaceholder}>
             <ActivityIndicator color="#4b5563" />
@@ -499,14 +504,16 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: '#f3f4f6',
+    width: '100%',
   },
   cardImage: {
     width: '100%',
-    height: 280,
+    height: '100%',
+    flex: 1,
   },
   imagePlaceholder: {
     width: '100%',
-    height: 280,
+    flex: 1,
     backgroundColor: '#f3f4f6',
     alignItems: 'center',
     justifyContent: 'center',

@@ -29,9 +29,13 @@ export function SessionProvider({ children }: PropsWithChildren) {
     let isMounted = true;
 
     const loadProfile = async (userId: string) => {
-      const profile = await fetchUserProfile(userId);
-      if (!isMounted || !profile) return;
-      setProfile(profile);
+      try {
+        const profile = await fetchUserProfile(userId);
+        if (!isMounted || !profile) return;
+        setProfile(profile);
+      } catch (error) {
+        console.warn('[session] Failed to load profile', error);
+      }
     };
 
     const clearSession = () => {
@@ -42,18 +46,25 @@ export function SessionProvider({ children }: PropsWithChildren) {
 
     const bootstrap = async () => {
       setStatus('loading');
-      const { data, error } = await client.auth.getSession();
-      if (!isMounted) return;
+      try {
+        const { data, error } = await client.auth.getSession();
+        if (!isMounted) return;
 
-      if (error || !data.session) {
-        clearSession();
-        return;
-      }
+        if (error || !data.session) {
+          clearSession();
+          return;
+        }
 
-      setSession(data.session);
-      await loadProfile(data.session.user.id);
-      if (isMounted) {
-        setStatus('authenticated');
+        setSession(data.session);
+        await loadProfile(data.session.user.id);
+        if (isMounted) {
+          setStatus('authenticated');
+        }
+      } catch (error) {
+        console.warn('[session] Failed to bootstrap session', error);
+        if (isMounted) {
+          clearSession();
+        }
       }
     };
 

@@ -7,6 +7,7 @@ import { invokeEdge } from '@/lib/edge';
 const MAX_DIMENSION = 2048;
 const MAX_BYTES = 10 * 1024 * 1024;
 const SIGNED_UPLOAD_RETRIES = 2;
+const UPLOAD_TIMEOUT_MS = 60 * 1000;
 
 export type PreparedUpload = {
   uri: string;
@@ -95,12 +96,17 @@ export async function uploadPreparedAsset(params: {
       },
     });
 
-    const uploadResult = await FileSystem.uploadAsync(signature.putUrl, params.asset.uri, {
-      httpMethod: 'PUT',
-      headers: {
-        'Content-Type': signature.mime,
-      },
-    });
+    const uploadResult = await runWithTimeout(
+      () =>
+        FileSystem.uploadAsync(signature.putUrl, params.asset.uri, {
+          httpMethod: 'PUT',
+          headers: {
+            'Content-Type': signature.mime,
+          },
+        }),
+      UPLOAD_TIMEOUT_MS,
+      'Upload is taking longer than expected. Check your connection and try again.',
+    );
 
     if (uploadResult.status >= 200 && uploadResult.status < 300) {
       return { key: signature.key, mime: signature.mime };
@@ -166,4 +172,26 @@ const describeUploadFailure = (status: number, body?: string | null) => {
   }
 
   return trimmed;
+};
+
+const runWithTimeout = async <T>(
+  operation: () => Promise<T>,
+  timeoutMs: number,
+  timeoutMessage: string,
+): Promise<T> => {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error(timeoutMessage));
+    }, timeoutMs);
+
+    operation()
+      .then((result) => {
+        clearTimeout(timer);
+        resolve(result);
+      })
+      .catch((error) => {
+        clearTimeout(timer);
+        reject(error);
+      });
+  });
 };

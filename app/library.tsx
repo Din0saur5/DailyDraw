@@ -26,6 +26,7 @@ import {
   type PremiumProductDetails,
 } from '@/lib/iap';
 import { env } from '@/lib/env';
+import { getClampedAspectRatio } from '@/lib/aspect';
 import { usePremiumStatusMutation } from '@/lib/mutations/premium';
 import { fetchUserProfile } from '@/lib/profile';
 import { useLibraryQuery, useSignedImageUrl } from '@/lib/queries';
@@ -179,6 +180,10 @@ function PremiumLibrary({ userId }: { userId: string }) {
 
 function LibraryCard({ entry }: { entry: LibraryEntry }) {
   const { data, isLoading, isError, refetch } = useSignedImageUrl(entry.originalKey);
+  const imageAspectRatio = useMemo(
+    () => getClampedAspectRatio(entry.width, entry.height),
+    [entry.height, entry.width],
+  );
 
   return (
     <View style={styles.libraryCard}>
@@ -192,7 +197,7 @@ function LibraryCard({ entry }: { entry: LibraryEntry }) {
       <Text style={styles.libraryTimestamp}>
         Uploaded {formatRelativeDate(entry.createdAt)}
       </Text>
-      <View style={styles.libraryImageShell}>
+      <View style={[styles.libraryImageShell, { aspectRatio: imageAspectRatio }]}>
         {isLoading && (
           <View style={styles.imagePlaceholder}>
             <ActivityIndicator />
@@ -482,17 +487,20 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: palette.gray,
+    width: '100%',
   },
   libraryImage: {
     width: '100%',
-    height: 240,
+    height: '100%',
+    flex: 1,
   },
   libraryCaption: {
     color: '#374151',
     lineHeight: 20,
   },
   imagePlaceholder: {
-    height: 240,
+    flex: 1,
+    width: '100%',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
