@@ -205,7 +205,10 @@ export const loadPremiumProductDetails = async (): Promise<PremiumProductDetails
 
 export const purchasePremium = async (): Promise<PurchaseShape> => {
   if (!shouldUseNativeIap() || !env.iapProductId) {
-    return fallbackPurchase();
+    if (__DEV__) {
+      return fallbackPurchase();
+    }
+    throw new Error('In-app purchases are not available on this build. Missing product ID.');
   }
   await initIapConnection();
   await loadPremiumProductDetails().catch(() => null);
@@ -240,7 +243,10 @@ export const purchasePremium = async (): Promise<PurchaseShape> => {
 
 export const restorePremium = async (): Promise<PurchaseShape | null> => {
   if (!shouldUseNativeIap() || !env.iapProductId) {
-    return fallbackPurchase();
+    if (__DEV__) {
+      return fallbackPurchase();
+    }
+    throw new Error('In-app purchases are not available on this build. Missing product ID.');
   }
   await initIapConnection();
   await loadPremiumProductDetails().catch(() => null);

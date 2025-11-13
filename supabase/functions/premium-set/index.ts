@@ -43,12 +43,24 @@ const verifyAppleReceipt = async (receiptData: string): Promise<AppleReceiptResp
     throw createHttpError(500, 'APPLE_IAP_SHARED_SECRET is not configured.');
   }
 
+  if (typeof receiptData !== 'string') {
+    console.error('[iap] receiptData is not a string', {
+      type: typeof receiptData,
+      value: receiptData,
+    });
+    throw createHttpError(400, 'Invalid receipt data type received from client.');
+  }
+
+  console.log('[iap] receipt length', receiptData.length);
+
   let response = await postToApple(APPLE_PRODUCTION_URL, receiptData, sharedSecret);
   if (response.status === 21007) {
     response = await postToApple(APPLE_SANDBOX_URL, receiptData, sharedSecret);
   } else if (response.status === 21008) {
     response = await postToApple(APPLE_PRODUCTION_URL, receiptData, sharedSecret);
   }
+
+  console.log('[iap] Apple status', response.status);
 
   if (response.status !== 0) {
     throw createHttpError(422, describeAppleStatus(response.status));
@@ -71,7 +83,9 @@ const postToApple = async (url: string, receiptData: string, password: string) =
     if (!response.ok) {
       throw createHttpError(response.status, 'Apple verification request failed');
     }
-    return (await response.json()) as AppleReceiptResponse;
+    const json = (await response.json()) as AppleReceiptResponse;
+    console.log('[iap] Apple verify response', url, json.status);
+    return json;
   } catch (error) {
     if (error instanceof HttpError) {
       throw error;

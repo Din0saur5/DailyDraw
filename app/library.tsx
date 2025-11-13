@@ -7,6 +7,7 @@ import {
   FlatList,
   Image,
   ListRenderItemInfo,
+  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -22,8 +23,9 @@ import {
   initIapConnection,
   loadPremiumProductDetails,
   purchasePremium,
-  type PremiumProductDetails
+  type PremiumProductDetails,
 } from '@/lib/iap';
+import { env } from '@/lib/env';
 import { usePremiumStatusMutation } from '@/lib/mutations/premium';
 import { fetchUserProfile } from '@/lib/profile';
 import { useLibraryQuery, useSignedImageUrl } from '@/lib/queries';
@@ -240,6 +242,9 @@ function PremiumUpsell() {
   const handleUpgrade = useCallback(async () => {
     try {
       setIapBusy(true);
+      console.log('[iap] env product id', env.iapProductId);
+      console.log('[iap] platform', Platform.OS);
+      console.log('[iap] native iap ready', Platform.OS === 'ios' && Boolean(env.iapProductId));
       const purchase = await purchasePremium();
       console.log('[iap] purchase result', purchase);
       if (!purchase.receiptData) {
