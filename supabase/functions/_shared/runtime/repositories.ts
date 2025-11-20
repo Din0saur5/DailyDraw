@@ -58,11 +58,21 @@ export const createRepositories = (client: SupabaseClient) => {
       const { error } = await client
         .from('users')
         .update({
-          is_premium: payload.isPremium,
           apple_product_id: payload.appleProductId ?? null,
           apple_latest_transaction_id: payload.appleLatestTransactionId ?? null,
+          apple_original_transaction_id: payload.appleOriginalTransactionId ?? null,
+          apple_app_account_token: payload.appleAppAccountToken ?? null,
           apple_environment: payload.appleEnvironment ?? null,
           premium_expires_at: payload.premiumExpiresAt ?? null,
+          subscription_status: payload.subscriptionStatus ?? null,
+          subscription_expires_at: payload.subscriptionExpiresAt ?? null,
+          will_renew: payload.willRenew ?? null,
+          is_in_grace_period: payload.isInGracePeriod ?? null,
+          is_in_billing_retry: payload.isInBillingRetry ?? null,
+          revoked_at: payload.revokedAt ?? null,
+          revocation_reason: payload.revocationReason ?? null,
+          last_apple_notification_at: payload.lastAppleNotificationAt ?? null,
+          last_apple_notification_type: payload.lastAppleNotificationType ?? null,
         })
         .eq('id', payload.userId);
       if (error) {

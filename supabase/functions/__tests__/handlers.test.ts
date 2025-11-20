@@ -266,9 +266,10 @@ describe('Edge function core handlers', () => {
     expect(usersRepo.updatePremiumMetadata).toHaveBeenCalledWith(
       expect.objectContaining({
         userId: 'user-1',
-        isPremium: true,
         appleProductId: 'com.dailydraw.premium',
-        appleLatestTransactionId: 'orig-1',
+        appleLatestTransactionId: 'txn-1',
+        appleOriginalTransactionId: 'orig-1',
+        subscriptionStatus: 'active',
       }),
     );
   });
@@ -306,7 +307,7 @@ describe('Edge function core handlers', () => {
     ).rejects.toBeInstanceOf(HttpError);
 
     expect(usersRepo.updatePremiumMetadata).not.toHaveBeenCalledWith(
-      expect.objectContaining({ isPremium: true }),
+      expect.objectContaining({ subscriptionStatus: 'active' }),
     );
   });
 });

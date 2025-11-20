@@ -22,10 +22,17 @@ export async function invokeEdge<TResponse>(
   options: EdgeInvokeOptions = {},
 ): Promise<TResponse> {
   if (!supabase) {
+    console.log('[edge] invoke aborted – supabase client missing', { name });
     throw new Error('Supabase client is not configured.');
   }
 
   const targetName = buildTargetName(name, options.query);
+  console.log('[edge] invoking function', {
+    targetName,
+    hasSupabase: Boolean(supabase),
+    hasBody: Boolean(options.body),
+    method: options.method ?? 'POST',
+  });
 
   const { data, error } = await supabase.functions.invoke<TResponse>(targetName, {
     body: options.body ?? undefined,
@@ -33,9 +40,11 @@ export async function invokeEdge<TResponse>(
   });
 
   if (error) {
+    console.log('[edge] function error', { targetName, error });
     throw new Error(await formatEdgeError(error));
   }
 
+  console.log('[edge] function success', { targetName });
   return data as TResponse;
 }
 

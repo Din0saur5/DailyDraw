@@ -1,3 +1,6 @@
+import { palette } from '@/constants/palette';
+import { supabase } from '@/lib/supabase';
+import * as Linking from 'expo-linking';
 import { useState } from 'react';
 import {
   ActivityIndicator,
@@ -11,9 +14,6 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import * as Linking from 'expo-linking';
-import { supabase } from '@/lib/supabase';
-import { palette } from '@/constants/palette';
 
 type AuthMode = 'signIn' | 'signUp';
 
@@ -23,12 +23,17 @@ type Props = {
 };
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const PRIVACY_POLICY_URL =
+  'https://righteous-seashore-4be.notion.site/DailyDrawings-Privacy-Policy-2ace09062a36804c9ab1c76d54ba1aa3';
+const TERMS_OF_USE_URL =
+  'https://righteous-seashore-4be.notion.site/DailyDrawings-Terms-of-Use-Community-Guidelines-2ace09062a368097bec1cf9c96400b2a';
 
 export function AuthScreen({ allowDevBypass, onDevBypass }: Props) {
   const [mode, setMode] = useState<AuthMode>('signIn');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [acceptedPolicies, setAcceptedPolicies] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [formMessage, setFormMessage] = useState<{ type: 'error' | 'info'; text: string } | null>(
     null,
@@ -49,8 +54,13 @@ export function AuthScreen({ allowDevBypass, onDevBypass }: Props) {
       nextErrors.password = 'Password must be at least 8 characters.';
     }
 
-    if (mode === 'signUp' && password !== confirmPassword) {
-      nextErrors.confirmPassword = 'Passwords must match.';
+    if (mode === 'signUp') {
+      if (password !== confirmPassword) {
+        nextErrors.confirmPassword = 'Passwords must match.';
+      }
+      if (!acceptedPolicies) {
+        nextErrors.policies = 'You must agree to the policies.';
+      }
     }
 
     return nextErrors;
@@ -172,7 +182,12 @@ export function AuthScreen({ allowDevBypass, onDevBypass }: Props) {
                 <Pressable
                   key={tab.value}
                   style={[styles.tabButton, selected && styles.tabButtonSelected]}
-                  onPress={() => setMode(tab.value)}
+                  onPress={() => {
+                    setMode(tab.value);
+                    if (tab.value === 'signIn') {
+                      setAcceptedPolicies(false);
+                    }
+                  }}
                   accessibilityState={{ selected }}
                 >
                   <Text style={[styles.tabLabel, selected && styles.tabLabelSelected]}>
@@ -230,6 +245,60 @@ export function AuthScreen({ allowDevBypass, onDevBypass }: Props) {
               )}
             </View>
           )}
+          {mode === 'signUp' && (
+            <Pressable
+              style={styles.checkboxRow}
+              onPress={() => {
+                setAcceptedPolicies((prev) => {
+                  const next = !prev;
+                  if (next && fieldErrors.policies) {
+                    setFieldErrors((current) => {
+                      const { policies: _policies, ...rest } = current;
+                      return rest;
+                    });
+                  }
+                  return next;
+                });
+              }}
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: acceptedPolicies }}
+              hitSlop={8}
+            >
+              <View style={[styles.checkboxBox, acceptedPolicies && styles.checkboxBoxChecked]}>
+                {acceptedPolicies && <Text style={styles.checkboxCheck}>✓</Text>}
+              </View>
+              <View style={styles.checkboxLabelContainer}>
+                <Text style={styles.checkboxText}>
+                  By signing up you agree to DailyDrawings'
+                  <Text
+                    style={styles.linkText}
+                    onPress={(event) => {
+                      event.stopPropagation();
+                      Linking.openURL(PRIVACY_POLICY_URL);
+                    }}
+                  >
+                    {' '}
+                    Privacy Policy
+                  </Text>{' '}
+                  and
+                  <Text
+                    style={styles.linkText}
+                    onPress={(event) => {
+                      event.stopPropagation();
+                      Linking.openURL(TERMS_OF_USE_URL);
+                    }}
+                  >
+                    {' '}
+                    Terms of Use
+                  </Text>
+                  .
+                </Text>
+                {fieldErrors.policies && (
+                  <Text style={styles.errorText}>{fieldErrors.policies}</Text>
+                )}
+              </View>
+            </Pressable>
+          )}
           {formMessage && (
             <Text style={[styles.formMessage, formMessage.type === 'error' && styles.errorText]}>
               {formMessage.text}
@@ -257,11 +326,11 @@ export function AuthScreen({ allowDevBypass, onDevBypass }: Props) {
               `EXPO_PUBLIC_SUPABASE_ANON_KEY` to continue.
             </Text>
           )}
-          {allowDevBypass && (
+          {/* {allowDevBypass && (
             <Pressable style={styles.secondaryButton} onPress={onDevBypass}>
               <Text style={styles.secondaryButtonText}>Bypass auth (dev only)</Text>
             </Pressable>
-          )}
+          )} */}
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -372,5 +441,38 @@ const styles = StyleSheet.create({
   linkText: {
     color: '#2563eb',
     fontWeight: '600',
+  },
+  checkboxRow: {
+    flexDirection: 'row',
+    gap: 12,
+    alignItems: 'flex-start',
+  },
+  checkboxBox: {
+    height: 22,
+    width: 22,
+    borderWidth: 1,
+    borderColor: palette.gray,
+    borderRadius: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fffef8',
+    marginTop: 4,
+  },
+  checkboxBoxChecked: {
+    backgroundColor: palette.black,
+    borderColor: palette.black,
+  },
+  checkboxCheck: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+    lineHeight: 16,
+  },
+  checkboxLabelContainer: {
+    flex: 1,
+  },
+  checkboxText: {
+    color: palette.black,
+    lineHeight: 20,
   },
 });

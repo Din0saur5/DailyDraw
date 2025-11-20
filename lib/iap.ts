@@ -21,6 +21,7 @@ export type PremiumProductDetails = {
 const PURCHASE_TIMEOUT_MS = 2 * 60 * 1000;
 
 let iapConnected = false;
+let iapConnectionPromise: Promise<void> | null = null;
 let premiumProductCache: PremiumProductDetails | null = null;
 let purchaseUpdateSubscription: RNIap.EventSubscription | null = null;
 let purchaseErrorSubscription: RNIap.EventSubscription | null = null;
@@ -55,7 +56,12 @@ const mapProductDetails = (
 
 const attachPurchaseListeners = () => {
   if (purchaseUpdateSubscription || purchaseErrorSubscription) return;
+  console.log('[iap] attaching purchase listeners');
   purchaseUpdateSubscription = RNIap.purchaseUpdatedListener((purchase) => {
+    console.log('[iap] purchaseUpdatedListener fired', {
+      productId: purchase.productId,
+      state: (purchase as any).purchaseState,
+    });
     if (
       !pendingPurchase ||
       purchase.productId !== pendingPurchase.productId ||
@@ -66,6 +72,11 @@ const attachPurchaseListeners = () => {
     settlePendingPurchase({ purchase });
   });
   purchaseErrorSubscription = RNIap.purchaseErrorListener((error) => {
+    console.log('[iap] purchaseErrorListener fired', {
+      code: (error as any).code,
+      message: error.message,
+      productId: (error as any).productId,
+    });
     if (!pendingPurchase) return;
     if (error.productId && error.productId !== pendingPurchase.productId) {
       return;
@@ -77,6 +88,7 @@ const attachPurchaseListeners = () => {
 };
 
 const detachPurchaseListeners = () => {
+  console.log('[iap] detaching purchase listeners');
   purchaseUpdateSubscription?.remove();
   purchaseErrorSubscription?.remove();
   purchaseUpdateSubscription = null;
@@ -85,6 +97,10 @@ const detachPurchaseListeners = () => {
 
 const settlePendingPurchase = (result: { purchase?: RNIap.Purchase; error?: Error }) => {
   if (!pendingPurchase) return false;
+  console.log('[iap] settlePendingPurchase', {
+    hasPurchase: Boolean(result.purchase),
+    hasError: Boolean(result.error),
+  });
   const current = pendingPurchase;
   pendingPurchase = null;
   if (current.timeout) {
@@ -104,6 +120,7 @@ const waitForPurchase = (productId: string) => {
       new Error('Another purchase is still being processed. Please try again in a moment.'),
     );
   }
+  console.log('[iap] waiting for purchase', { productId });
   attachPurchaseListeners();
   return new Promise<RNIap.Purchase>((resolve, reject) => {
     pendingPurchase = {
@@ -121,6 +138,7 @@ const waitForPurchase = (productId: string) => {
 
 const cancelPendingPurchase = (reason?: Error | string) => {
   if (!pendingPurchase) return;
+  console.log('[iap] cancelPendingPurchase', { reason });
   const error = reason instanceof Error ? reason : new Error(reason ?? 'Purchase cancelled.');
   settlePendingPurchase({ error });
 };
@@ -161,13 +179,46 @@ const fetchReceiptData = async (): Promise<string | null> => {
 };
 
 export const initIapConnection = async () => {
-  if (!shouldUseNativeIap() || iapConnected) return;
-  await RNIap.initConnection();
-  attachPurchaseListeners();
-  iapConnected = true;
+  if (!shouldUseNativeIap() || iapConnected) {
+    if (!shouldUseNativeIap()) {
+      console.log('[iap] skipping init: native iap not available', { platform: Platform.OS });
+    }
+    if (iapConnected) {
+      console.log('[iap] init skipped: already connected');
+    }
+    return;
+  }
+  if (!iapConnectionPromise) {
+    console.log('[iap] initConnection start');
+    iapConnectionPromise = (async () => {
+      const connected = await RNIap.initConnection();
+      if (!connected) {
+        throw new Error('Unable to connect to the App Store for purchases. Please try again.');
+      }
+      attachPurchaseListeners();
+      iapConnected = true;
+      console.log('[iap] initConnection success');
+    })()
+      .catch((error) => {
+        console.warn('[iap] Failed to initialize native IAP connection', error);
+        throw error;
+      })
+      .finally(() => {
+        iapConnectionPromise = null;
+        console.log('[iap] initConnection finished');
+      });
+  }
+  await iapConnectionPromise;
 };
 
 export const endIapConnection = async () => {
+  if (iapConnectionPromise) {
+    try {
+      await iapConnectionPromise;
+    } catch {
+      // swallow errors from a failed initialization attempt
+    }
+  }
   if (!iapConnected) return;
   await RNIap.endConnection();
   detachPurchaseListeners();
@@ -178,24 +229,35 @@ export const endIapConnection = async () => {
 
 export const loadPremiumProductDetails = async (): Promise<PremiumProductDetails | null> => {
   if (!shouldUseNativeIap() || !env.iapProductId) {
+    console.log('[iap] loadPremiumProductDetails skipped', {
+      platform: Platform.OS,
+      hasProduct: Boolean(env.iapProductId),
+    });
     return null;
   }
   if (premiumProductCache && premiumProductCache.id === env.iapProductId) {
+    console.log('[iap] returning cached product details', premiumProductCache);
     return premiumProductCache;
   }
   await initIapConnection();
   try {
+    console.log('[iap] fetching product details', { sku: env.iapProductId });
     const result = await RNIap.fetchProducts({
       skus: [env.iapProductId],
       type: 'subs',
     });
     const products = Array.isArray(result) ? result : [];
+    console.log('[iap] fetchProducts result count', products.length);
     const match = products.find((item) => {
       const productId = 'productId' in item && item.productId ? item.productId : item.id;
       return productId === env.iapProductId;
     });
-    if (!match) return null;
+    if (!match) {
+      console.log('[iap] product not found in fetchProducts');
+      return null;
+    }
     premiumProductCache = mapProductDetails(match);
+    console.log('[iap] product details cached', premiumProductCache);
     return premiumProductCache;
   } catch (error) {
     console.warn('[iap] Failed to load premium product', error);
@@ -206,6 +268,7 @@ export const loadPremiumProductDetails = async (): Promise<PremiumProductDetails
 export const purchasePremium = async (): Promise<PurchaseShape> => {
   if (!shouldUseNativeIap() || !env.iapProductId) {
     if (__DEV__) {
+      console.log('[iap] falling back to mock purchase (dev)');
       return fallbackPurchase();
     }
     throw new Error('In-app purchases are not available on this build. Missing product ID.');
@@ -214,6 +277,7 @@ export const purchasePremium = async (): Promise<PurchaseShape> => {
   await loadPremiumProductDetails().catch(() => null);
   const purchasePromise = waitForPurchase(env.iapProductId);
   try {
+    console.log('[iap] requestPurchase start', { sku: env.iapProductId });
     await RNIap.requestPurchase({
       type: 'subs',
       request: {
@@ -224,11 +288,18 @@ export const purchasePremium = async (): Promise<PurchaseShape> => {
       },
     });
   } catch (error) {
+    console.log('[iap] requestPurchase error', error);
     cancelPendingPurchase(error instanceof Error ? error : String(error));
     throw error;
   }
   const purchase = await purchasePromise;
+  console.log('[iap] requestPurchase completed', {
+    productId: purchase.productId,
+    transactionId: (purchase as any).transactionId,
+    purchaseState: (purchase as any).purchaseState,
+  });
   await RNIap.finishTransaction({ purchase, isConsumable: false });
+  console.log('[iap] finishTransaction complete');
   const receiptData = await fetchReceiptData();
   if (!receiptData) {
     throw new Error('Apple did not return a receipt for this purchase. Please try again.');
@@ -244,21 +315,27 @@ export const purchasePremium = async (): Promise<PurchaseShape> => {
 export const restorePremium = async (): Promise<PurchaseShape | null> => {
   if (!shouldUseNativeIap() || !env.iapProductId) {
     if (__DEV__) {
+      console.log('[iap] falling back to mock restore (dev)');
       return fallbackPurchase();
     }
     throw new Error('In-app purchases are not available on this build. Missing product ID.');
   }
   await initIapConnection();
   await loadPremiumProductDetails().catch(() => null);
+  console.log('[iap] getAvailablePurchases start');
   const purchases = await RNIap.getAvailablePurchases({
     alsoPublishToEventListenerIOS: false,
     onlyIncludeActiveItemsIOS: true,
   });
+  console.log('[iap] getAvailablePurchases result', purchases?.length ?? 0);
   const premiumPurchase = purchases.find((item) => {
     if (item.productId === env.iapProductId) return true;
     return Array.isArray(item.ids) && item.ids.includes(env.iapProductId);
   });
-  if (!premiumPurchase) return null;
+  if (!premiumPurchase) {
+    console.log('[iap] no matching purchase found during restore');
+    return null;
+  }
   const receiptData = await fetchReceiptData();
   if (!receiptData) {
     throw new Error('Apple could not locate a receipt to restore. Try purchasing again.');

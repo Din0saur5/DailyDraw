@@ -17,11 +17,21 @@ export interface UsersRepository {
 
 export interface PremiumMetadataInput {
   userId: string;
-  isPremium: boolean;
   appleProductId?: string | null;
   appleLatestTransactionId?: string | null;
+  appleOriginalTransactionId?: string | null;
+  appleAppAccountToken?: string | null;
   appleEnvironment?: string | null;
   premiumExpiresAt?: string | null;
+  subscriptionStatus?: string | null;
+  subscriptionExpiresAt?: string | null;
+  willRenew?: boolean | null;
+  isInGracePeriod?: boolean | null;
+  isInBillingRetry?: boolean | null;
+  revokedAt?: string | null;
+  revocationReason?: number | null;
+  lastAppleNotificationAt?: string | null;
+  lastAppleNotificationType?: string | null;
 }
 
 export interface SubmissionsRepository {

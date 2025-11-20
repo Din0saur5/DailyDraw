@@ -18,15 +18,16 @@ import {
 } from 'react-native';
 
 import { palette } from '@/constants/palette';
+import { getClampedAspectRatio } from '@/lib/aspect';
+import { env } from '@/lib/env';
 import {
   endIapConnection,
   initIapConnection,
   loadPremiumProductDetails,
   purchasePremium,
+  restorePremium,
   type PremiumProductDetails,
 } from '@/lib/iap';
-import { env } from '@/lib/env';
-import { getClampedAspectRatio } from '@/lib/aspect';
 import { usePremiumStatusMutation } from '@/lib/mutations/premium';
 import { fetchUserProfile } from '@/lib/profile';
 import { useLibraryQuery, useSignedImageUrl } from '@/lib/queries';
@@ -255,44 +256,58 @@ function PremiumUpsell() {
       if (!purchase.receiptData) {
         throw new Error('Apple did not return a receipt for this purchase. Please try again.');
       }
+      console.log('[iap] calling premium-set', {
+        productId: purchase.productId,
+        transactionId: purchase.transactionId,
+        hasReceipt: Boolean(purchase.receiptData),
+      });
       await premiumMutation.mutateAsync({
         isPremium: true,
         productId: purchase.productId,
         transactionId: purchase.transactionId,
         receiptData: purchase.receiptData,
       });
+      console.log('[iap] premium-set completed');
       Alert.alert('Welcome to Premium', 'Your upload history is now unlocked.');
     } catch (error) {
+      console.log('[iap] upgrade flow error', error);
       Alert.alert('Upgrade failed', extractMessage(error));
     } finally {
       setIapBusy(false);
     }
   }, [premiumMutation]);
 
-  // const handleRestore = useCallback(async () => {
-  //   try {
-  //     setIapBusy(true);
-  //     const purchase = await restorePremium();
-  //     if (!purchase) {
-  //       Alert.alert('No purchases found', 'Use the same Apple ID used during checkout.');
-  //       return;
-  //     }
-  //     if (!purchase.receiptData) {
-  //       throw new Error('Apple could not locate a receipt to restore. Try purchasing again.');
-  //     }
-  //     await premiumMutation.mutateAsync({
-  //       isPremium: true,
-  //       productId: purchase.productId,
-  //       transactionId: purchase.transactionId,
-  //       receiptData: purchase.receiptData,
-  //     });
-  //     Alert.alert('Restored', 'Premium status restored on this device.');
-  //   } catch (error) {
-  //     Alert.alert('Restore failed', extractMessage(error));
-  //   } finally {
-  //     setIapBusy(false);
-  //   }
-  // }, [premiumMutation]);
+  const handleRestore = useCallback(async () => {
+    try {
+      setIapBusy(true);
+      const purchase = await restorePremium();
+      if (!purchase) {
+        Alert.alert('No purchases found', 'Use the same Apple ID used during checkout.');
+        return;
+      }
+      if (!purchase.receiptData) {
+        throw new Error('Apple could not locate a receipt to restore. Try purchasing again.');
+      }
+      console.log('[iap] calling premium-set (restore)', {
+        productId: purchase.productId,
+        transactionId: purchase.transactionId,
+        hasReceipt: Boolean(purchase.receiptData),
+      });
+      await premiumMutation.mutateAsync({
+        isPremium: true,
+        productId: purchase.productId,
+        transactionId: purchase.transactionId,
+        receiptData: purchase.receiptData,
+      });
+      console.log('[iap] premium-set restore completed');
+      Alert.alert('Restored', 'Premium status restored on this device.');
+    } catch (error) {
+      console.log('[iap] restore flow error', error);
+      Alert.alert('Restore failed', extractMessage(error));
+    } finally {
+      setIapBusy(false);
+    }
+  }, [premiumMutation]);
 
   return (
     <ScrollView contentContainerStyle={styles.upsellContent}>
@@ -323,13 +338,13 @@ function PremiumUpsell() {
           <Text style={styles.primaryButtonText}>{upgradeLabel}</Text>
         )}
       </Pressable>
-      {/* <Pressable
+      <Pressable
         style={[styles.secondaryButton, busy && styles.disabledButton]}
         onPress={handleRestore}
         disabled={busy}
       >
         <Text style={styles.secondaryButtonText}>Restore purchase</Text>
-      </Pressable> */}
+      </Pressable>
       <Text style={styles.disclaimer}>
         Purchases are processed by Apple. Subscriptions renew automatically unless cancelled at
         least 24 hours before the end of the period.

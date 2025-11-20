@@ -35,11 +35,21 @@ interface PremiumHandlerDeps {
 
 const buildResetPayload = (userId: string) => ({
   userId,
-  isPremium: false,
   appleProductId: null,
   appleLatestTransactionId: null,
+  appleOriginalTransactionId: null,
+  appleAppAccountToken: null,
   appleEnvironment: null,
   premiumExpiresAt: null,
+  subscriptionStatus: null,
+  subscriptionExpiresAt: null,
+  willRenew: null,
+  isInGracePeriod: null,
+  isInBillingRetry: null,
+  revokedAt: null,
+  revocationReason: null,
+  lastAppleNotificationAt: null,
+  lastAppleNotificationType: null,
 });
 
 export const handlePremiumStatus = async (
@@ -77,24 +87,35 @@ export const handlePremiumStatus = async (
     throw createHttpError(402, 'Subscription has expired. Renew via Apple and try again.');
   }
 
-  const resolvedTransactionId =
-    receipt.original_transaction_id ?? receipt.transaction_id ?? body.transactionId ?? null;
+  const originalTransactionId =
+    receipt.original_transaction_id ?? body.transactionId ?? receipt.transaction_id ?? null;
+  const latestTransactionId = receipt.transaction_id ?? originalTransactionId;
+  const expiresAtIso = expiresAt.toISOString();
 
   await deps.usersRepo.updatePremiumMetadata({
     userId: deps.currentUserId,
-    isPremium: true,
     appleProductId: productId,
-    appleLatestTransactionId: resolvedTransactionId,
+    appleLatestTransactionId: latestTransactionId,
+    appleOriginalTransactionId: originalTransactionId,
     appleEnvironment: response.environment ?? null,
-    premiumExpiresAt: expiresAt.toISOString(),
+    premiumExpiresAt: expiresAtIso,
+    subscriptionStatus: 'active',
+    subscriptionExpiresAt: expiresAtIso,
+    willRenew: true,
+    isInGracePeriod: false,
+    isInBillingRetry: false,
+    revokedAt: null,
+    revocationReason: null,
+    lastAppleNotificationAt: null,
+    lastAppleNotificationType: null,
   });
 
   return {
     isPremium: true,
     productId,
-    transactionId: resolvedTransactionId,
+    transactionId: latestTransactionId,
     environment: response.environment ?? null,
-    expiresAt: expiresAt.toISOString(),
+    expiresAt: expiresAtIso,
   };
 };
 

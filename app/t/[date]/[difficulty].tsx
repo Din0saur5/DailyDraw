@@ -1,6 +1,7 @@
 import { useCallback, useMemo } from 'react';
 
 import { Stack, useLocalSearchParams } from 'expo-router';
+import * as Linking from 'expo-linking';
 import {
   ActivityIndicator,
   Alert,
@@ -14,6 +15,7 @@ import {
 } from 'react-native';
 
 import FeedList from '@/components/feed/FeedList';
+import { palette } from '@/constants/palette';
 import { trackEvent } from '@/lib/analytics';
 import { useCreateSubmissionMutation } from '@/lib/mutations/submissions';
 import { useSubmissionForPrompt, useTodayPrompts } from '@/lib/queries';
@@ -22,7 +24,9 @@ import { useSessionStore } from '@/stores/useSessionStore';
 import { createEmptyUploadEntry, useUploadStore } from '@/stores/useUploadStore';
 import { DailyPrompt, difficultyLabels, PromptDifficulty } from '@/types/prompt';
 import { useQueryClient } from '@tanstack/react-query';
-import { palette } from '@/constants/palette';
+
+const CONTENT_RIGHTS_POLICY_URL =
+  'https://righteous-seashore-4be.notion.site/Content-Rights-Upload-Policy-2ace09062a3680dd9342e24d0358ef4b';
 
 export default function ThreadScreen() {
   const { date, difficulty } = useLocalSearchParams<{ date?: string; difficulty?: string }>();
@@ -295,6 +299,16 @@ function UploadPanel({ prompt }: UploadPanelProps) {
           <Text style={styles.uploadButtonText}>Upload drawing</Text>
         )}
       </Pressable>
+      <Text style={styles.captionCounter}>
+        By pressing upload drawing you agree to Daily Drawings
+        <Text
+          style={styles.policyLink}
+          onPress={() => Linking.openURL(CONTENT_RIGHTS_POLICY_URL)}
+        >
+          {' '}
+          Content Rights & Upload Policy
+        </Text>
+      </Text>
     </View>
   );
 }
@@ -486,6 +500,10 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-end',
     fontSize: 12,
     color: '#6b7280',
+  },
+  policyLink: {
+    color: '#2563eb',
+    fontWeight: '600',
   },
   successBanner: {
     borderRadius: 12,
