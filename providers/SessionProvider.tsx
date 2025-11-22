@@ -4,6 +4,8 @@ import { supabase } from '@/lib/supabase';
 import { fetchUserProfile } from '@/lib/profile';
 import { useSessionStore } from '@/stores/useSessionStore';
 
+const SESSION_BOOTSTRAP_TIMEOUT_MS = 4000;
+
 export function SessionProvider({ children }: PropsWithChildren) {
   const router = useRouter();
   const setStatus = useSessionStore((state) => state.setStatus);
@@ -27,6 +29,14 @@ export function SessionProvider({ children }: PropsWithChildren) {
     }
 
     let isMounted = true;
+    let bootstrapTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const clearBootstrapTimer = () => {
+      if (bootstrapTimer) {
+        clearTimeout(bootstrapTimer);
+        bootstrapTimer = null;
+      }
+    };
 
     const loadProfile = async (userId: string) => {
       try {
@@ -39,13 +49,26 @@ export function SessionProvider({ children }: PropsWithChildren) {
     };
 
     const clearSession = () => {
+      if (!isMounted) return;
+      clearBootstrapTimer();
       setSession(null);
       setProfile(null);
       setStatus('unauthenticated');
     };
 
+    const startBootstrapTimer = () => {
+      clearBootstrapTimer();
+      bootstrapTimer = setTimeout(() => {
+        if (!isMounted) return;
+        if (useSessionStore.getState().status !== 'loading') return;
+        console.warn('[session] Session bootstrap timed out; defaulting to unauthenticated.');
+        clearSession();
+      }, SESSION_BOOTSTRAP_TIMEOUT_MS);
+    };
+
     const bootstrap = async () => {
       setStatus('loading');
+      startBootstrapTimer();
       try {
         const { data, error } = await client.auth.getSession();
         if (!isMounted) return;
@@ -65,6 +88,8 @@ export function SessionProvider({ children }: PropsWithChildren) {
         if (isMounted) {
           clearSession();
         }
+      } finally {
+        clearBootstrapTimer();
       }
     };
 
@@ -90,12 +115,14 @@ export function SessionProvider({ children }: PropsWithChildren) {
       await loadProfile(session.user.id);
       if (isMounted) {
         setStatus('authenticated');
+        clearBootstrapTimer();
       }
     });
 
     return () => {
       isMounted = false;
       subscription.subscription?.unsubscribe();
+      clearBootstrapTimer();
     };
   }, [devBypass, router, setProfile, setSession, setStatus]);
 

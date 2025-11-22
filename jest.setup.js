@@ -1,3 +1,5 @@
+require('dotenv').config();
+
 if (process.env.EXPO_PUBLIC_SUPABASE_URL == null) {
   process.env.EXPO_PUBLIC_SUPABASE_URL = 'https://test.supabase.co';
 }

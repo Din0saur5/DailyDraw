@@ -310,4 +310,65 @@ describe('Edge function core handlers', () => {
       expect.objectContaining({ subscriptionStatus: 'active' }),
     );
   });
+
+  it('accepts a realistic Apple receipt payload shape', async () => {
+    const usersRepo: any = {
+      updatePremiumMetadata: jest.fn().mockResolvedValue(undefined),
+    };
+
+    const now = new Date('2024-01-01T00:00:00Z');
+    const later = new Date(now.getTime() + 60 * 60 * 1000);
+    const productId = 'com.dailydraw.premium.monthly';
+
+    const verifyReceipt = jest.fn().mockResolvedValue({
+      status: 0,
+      environment: 'Sandbox',
+      receipt: {
+        in_app: [
+          {
+            product_id: productId,
+            expires_date_ms: later.getTime().toString(),
+            original_transaction_id: '100000000000001',
+            transaction_id: '100000000000002',
+            purchase_date_ms: now.getTime().toString(),
+          },
+        ],
+      },
+    });
+
+    const result = await handlePremiumStatus(
+      {
+        usersRepo,
+        currentUserId: 'user-42',
+        verifyReceipt,
+        now: () => now,
+      },
+      {
+        isPremium: true,
+        receiptData: 'base64-receipt',
+        productId,
+        transactionId: '100000000000002',
+      },
+    );
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        isPremium: true,
+        productId,
+        transactionId: '100000000000002',
+        environment: 'Sandbox',
+      }),
+    );
+
+    expect(usersRepo.updatePremiumMetadata).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: 'user-42',
+        appleProductId: productId,
+        appleLatestTransactionId: '100000000000002',
+        appleOriginalTransactionId: '100000000000001',
+        premiumExpiresAt: later.toISOString(),
+        subscriptionStatus: 'active',
+      }),
+    );
+  });
 });

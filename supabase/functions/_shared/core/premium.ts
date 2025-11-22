@@ -79,6 +79,15 @@ export const handlePremiumStatus = async (
   }
 
   const expiresAt = resolveExpiration(receipt);
+  console.log('[iap] receipt chosen for premium-set', {
+    productId: receipt.product_id,
+    transactionId: receipt.transaction_id,
+    originalTransactionId: receipt.original_transaction_id,
+    expiresDateMs: receipt.expires_date_ms,
+    expiresDate: receipt.expires_date,
+    now: deps.now().toISOString(),
+    environment: response.environment,
+  });
   if (!expiresAt) {
     throw createHttpError(422, 'Apple receipt is missing an expiration date.');
   }

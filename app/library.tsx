@@ -227,6 +227,7 @@ function PremiumUpsell() {
   const [productDetails, setProductDetails] = useState<PremiumProductDetails | null>(null);
   const premiumMutation = usePremiumStatusMutation();
   const busy = iapBusy || premiumMutation.isPending;
+  const appAccountToken = useSessionStore((state) => state.profile?.id ?? null);
   const upgradeLabel = productDetails?.displayPrice
     ? `Go Premium – ${productDetails.displayPrice}`
     : 'Go Premium';
@@ -251,7 +252,8 @@ function PremiumUpsell() {
       console.log('[iap] env product id', env.iapProductId);
       console.log('[iap] platform', Platform.OS);
       console.log('[iap] native iap ready', Platform.OS === 'ios' && Boolean(env.iapProductId));
-      const purchase = await purchasePremium();
+      console.log('[iap] using appAccountToken', appAccountToken);
+      const purchase = await purchasePremium(appAccountToken);
       console.log('[iap] purchase result', purchase);
       if (!purchase.receiptData) {
         throw new Error('Apple did not return a receipt for this purchase. Please try again.');
@@ -365,8 +367,19 @@ const EmptyLibraryState = ({ onRefresh }: { onRefresh: () => void }) => (
   </View>
 );
 
-const extractMessage = (error: unknown) =>
-  error instanceof Error ? error.message : 'Something went wrong. Please try again.';
+const extractMessage = (error: unknown) => {
+  if (!(error instanceof Error)) {
+    return 'Something went wrong. Please try again.';
+  }
+  const message = error.message || '';
+  if (
+    message.includes('apple_original_transaction_id') ||
+    message.includes('users_apple_original_transaction_id_key')
+  ) {
+    return 'This Apple subscription is already linked to another DailyDraw account. Sign in with that account or contact support to move it.';
+  }
+  return message;
+};
 
 const formatRelativeDate = (isoDate: string) => {
   const now = Date.now();

@@ -163,17 +163,25 @@ const resolveTransactionId = (purchase: RNIap.Purchase) => {
 
 const fetchReceiptData = async (): Promise<string | null> => {
   if (Platform.OS !== 'ios') return null;
+  // Always refresh to avoid stale/expired receipts during premium-set verification
   try {
-    const receipt = await RNIap.getReceiptIOS();
-    if (receipt) return receipt;
-  } catch (error) {
-    console.warn('[iap] Unable to read Apple receipt', error);
-  }
-  try {
+    console.log('[iap] requestReceiptRefreshIOS start');
     await RNIap.requestReceiptRefreshIOS();
-    return (await RNIap.getReceiptIOS()) ?? null;
+    console.log('[iap] requestReceiptRefreshIOS complete');
   } catch (error) {
     console.warn('[iap] Receipt refresh failed', error);
+  }
+
+  try {
+    const receipt = await RNIap.getReceiptIOS();
+    if (receipt) {
+      console.log('[iap] getReceiptIOS success', { length: receipt.length });
+      return receipt;
+    }
+    console.log('[iap] getReceiptIOS returned null/empty');
+    return null;
+  } catch (error) {
+    console.warn('[iap] Unable to read Apple receipt', error);
     return null;
   }
 };
@@ -265,7 +273,9 @@ export const loadPremiumProductDetails = async (): Promise<PremiumProductDetails
   }
 };
 
-export const purchasePremium = async (): Promise<PurchaseShape> => {
+export const purchasePremium = async (
+  appAccountToken?: string | null,
+): Promise<PurchaseShape> => {
   if (!shouldUseNativeIap() || !env.iapProductId) {
     if (__DEV__) {
       console.log('[iap] falling back to mock purchase (dev)');
@@ -284,6 +294,8 @@ export const purchasePremium = async (): Promise<PurchaseShape> => {
         ios: {
           sku: env.iapProductId,
           andDangerouslyFinishTransactionAutomatically: false,
+          // Tie Apple renewals to this app account for webhook lookups
+          appAccountToken: appAccountToken ?? undefined,
         },
       },
     });
