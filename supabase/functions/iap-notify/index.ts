@@ -45,8 +45,8 @@ type TransactionPayload = {
   price?: string;
 };
 
-const APPLE_JWKS_PROD = 'https://api.storekit.itunes.apple.com/inApps/v1/notifications';
-const APPLE_JWKS_SANDBOX = 'https://api.storekit-sandbox.itunes.apple.com/inApps/v1/notifications';
+const APPLE_JWKS_PROD = 'https://api.storekit.itunes.apple.com/inApps/v1/notifications/jwsPublicKeys';
+const APPLE_JWKS_SANDBOX = 'https://api.storekit-sandbox.itunes.apple.com/inApps/v1/notifications/jwsPublicKeys';
 
 const APPLE_API_KEY_ID = Deno.env.get('APPLE_API_KEY_ID') ?? '';
 const APPLE_API_ISSUER_ID = Deno.env.get('APPLE_API_ISSUER_ID') ?? '';
@@ -147,7 +147,16 @@ const getAppleDeveloperToken = async (): Promise<string | null> => {
   }
 };
 
-const importAppleKey = async (jwk: Jwk) => {
+const importAppleKey = async (jwk: Jwk, alg: string) => {
+  if (alg === 'ES256') {
+    return crypto.subtle.importKey(
+      'jwk',
+      { ...jwk, ext: true } as JsonWebKey,
+      { name: 'ECDSA', namedCurve: 'P-256' },
+      false,
+      ['verify'],
+    );
+  }
   return crypto.subtle.importKey(
     'jwk',
     {
@@ -167,6 +176,16 @@ const importAppleKey = async (jwk: Jwk) => {
 const verifyJws = async (jws: string, jwksUrl: string): Promise<boolean> => {
   const parts = jws.split('.');
   if (parts.length !== 3) return false;
+
+  let header: { alg?: string; kid?: string } = {};
+  try {
+    const headerJson = new TextDecoder().decode(base64UrlToUint8Array(parts[0]));
+    header = JSON.parse(headerJson);
+  } catch (error) {
+    console.warn('[iap-notify] Unable to parse JWS header', error);
+  }
+  const alg = header.alg ?? 'RS256';
+  const kid = header.kid;
 
   let jwks: { keys?: Jwk[] } = {};
   let authToken: string | null = null;
@@ -200,13 +219,24 @@ const verifyJws = async (jws: string, jwksUrl: string): Promise<boolean> => {
     return false;
   }
 
+  const candidateKeys = kid ? keys.filter((k) => k.kid === kid) : keys;
+  if (!candidateKeys.length) {
+    console.error('[iap-notify] No matching key in JWKS', { jwksUrl, kid, keyCount: keys.length });
+    return false;
+  }
+
   const data = new TextEncoder().encode(`${parts[0]}.${parts[1]}`);
   const signature = base64UrlToUint8Array(parts[2]);
 
-  for (const jwk of keys) {
+  const verifyAlgo =
+    alg === 'ES256'
+      ? { name: 'ECDSA', hash: 'SHA-256' }
+      : { name: 'RSASSA-PKCS1-v1_5' };
+
+  for (const jwk of candidateKeys) {
     try {
-      const key = await importAppleKey(jwk);
-      const valid = await crypto.subtle.verify('RSASSA-PKCS1-v1_5', key, signature, data);
+      const key = await importAppleKey(jwk, alg);
+      const valid = await crypto.subtle.verify(verifyAlgo, key, signature, data);
       if (valid) return true;
     } catch (error) {
       console.warn('[iap-notify] Key verify failed', error);

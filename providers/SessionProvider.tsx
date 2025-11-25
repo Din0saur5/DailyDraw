@@ -1,10 +1,27 @@
 import { PropsWithChildren, useEffect } from 'react';
+import * as Linking from 'expo-linking';
 import { useRouter } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 import { fetchUserProfile } from '@/lib/profile';
 import { useSessionStore } from '@/stores/useSessionStore';
 
 const SESSION_BOOTSTRAP_TIMEOUT_MS = 4000;
+
+const parseSessionParams = (url: string) => {
+  try {
+    const parsed = new URL(url);
+    const searchParams = parsed.searchParams;
+    const hashParams = new URLSearchParams(parsed.hash.startsWith('#') ? parsed.hash.slice(1) : parsed.hash);
+
+    const code = searchParams.get('code') ?? hashParams.get('code');
+    const accessToken = hashParams.get('access_token');
+    const refreshToken = hashParams.get('refresh_token');
+
+    return { code, accessToken, refreshToken };
+  } catch {
+    return { code: null, accessToken: null, refreshToken: null };
+  }
+};
 
 export function SessionProvider({ children }: PropsWithChildren) {
   const router = useRouter();
@@ -66,10 +83,29 @@ export function SessionProvider({ children }: PropsWithChildren) {
       }, SESSION_BOOTSTRAP_TIMEOUT_MS);
     };
 
+    const handleSessionFromUrl = async (url: string | null) => {
+      if (!url) return;
+      const { code, accessToken, refreshToken } = parseSessionParams(url);
+      try {
+        if (code) {
+          await client.auth.exchangeCodeForSession(code);
+          return;
+        }
+        if (accessToken && refreshToken) {
+          await client.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
+        }
+      } catch (error) {
+        console.warn('[session] Failed to exchange session from URL', error);
+      }
+    };
+
     const bootstrap = async () => {
       setStatus('loading');
       startBootstrapTimer();
       try {
+        const initialUrl = await Linking.getInitialURL();
+        await handleSessionFromUrl(initialUrl);
+
         const { data, error } = await client.auth.getSession();
         if (!isMounted) return;
 
@@ -94,6 +130,10 @@ export function SessionProvider({ children }: PropsWithChildren) {
     };
 
     bootstrap();
+
+    const urlSubscription = Linking.addEventListener('url', async (event) => {
+      await handleSessionFromUrl(event.url);
+    });
 
     const { data: subscription } = client.auth.onAuthStateChange(async (event, session) => {
       if (!isMounted) return;
@@ -122,6 +162,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
     return () => {
       isMounted = false;
       subscription.subscription?.unsubscribe();
+      urlSubscription.remove();
       clearBootstrapTimer();
     };
   }, [devBypass, router, setProfile, setSession, setStatus]);
