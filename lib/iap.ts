@@ -1,4 +1,4 @@
-import { Platform } from 'react-native';
+import { Alert, Platform } from 'react-native';
 import * as RNIap from 'react-native-iap';
 
 import { env } from '@/lib/env';
@@ -201,13 +201,31 @@ const fetchReceiptData = async (purchase?: RNIap.Purchase): Promise<string | nul
       return receipt;
     }
     console.log('[iap] getReceiptIOS returned null/empty');
+    return null;
   } catch (error) {
     console.warn('[iap] Unable to read Apple receipt', error);
+    return null;
   }
+};
 
-  // If there was no embedded receipt and none on disk, refresh once (may prompt Apple ID)
+const promptReceiptRefreshAndFetch = async (): Promise<string | null> => {
+  if (Platform.OS !== 'ios') return null;
+
+  const consent = await new Promise<boolean>((resolve) => {
+    Alert.alert(
+      'Refresh receipt',
+      'Apple needs to refresh your receipt to finish verifying this purchase. This may prompt you to sign into your App Store sandbox account.',
+      [
+        { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
+        { text: 'Refresh', style: 'default', onPress: () => resolve(true) },
+      ],
+    );
+  });
+
+  if (!consent) return null;
+
   try {
-    console.log('[iap] requestReceiptRefreshIOS start');
+    console.log('[iap] requestReceiptRefreshIOS start (user approved)');
     await RNIap.requestReceiptRefreshIOS();
     console.log('[iap] requestReceiptRefreshIOS complete');
   } catch (error) {
@@ -217,13 +235,13 @@ const fetchReceiptData = async (purchase?: RNIap.Purchase): Promise<string | nul
   try {
     const receipt = await RNIap.getReceiptIOS();
     if (receipt) {
-      console.log('[iap] getReceiptIOS success after refresh', { length: receipt.length });
+      console.log('[iap] getReceiptIOS success after user refresh', { length: receipt.length });
       return receipt;
     }
-    console.log('[iap] getReceiptIOS still empty after refresh');
+    console.log('[iap] getReceiptIOS still empty after user refresh');
     return null;
   } catch (error) {
-    console.warn('[iap] Unable to read Apple receipt', error);
+    console.warn('[iap] Unable to read Apple receipt after refresh', error);
     return null;
   }
 };
@@ -354,9 +372,23 @@ export const purchasePremium = async (
   });
   await RNIap.finishTransaction({ purchase, isConsumable: false });
   console.log('[iap] finishTransaction complete');
-  const receiptData = await fetchReceiptData(purchase);
+  let receiptData = await fetchReceiptData(purchase);
   if (!receiptData) {
-    throw new Error('Apple did not return a receipt for this purchase. Please try again.');
+    receiptData = await promptReceiptRefreshAndFetch();
+  }
+  if (!receiptData) {
+    try {
+      console.log('[iap] no receipt after purchase; attempting restore fallback');
+      const restored = await restorePremium();
+      if (restored?.receiptData) {
+        return restored;
+      }
+    } catch (error) {
+      console.warn('[iap] restore fallback failed', error);
+    }
+    throw new Error(
+      'Apple did not return a receipt for this purchase. Confirm you are signed into your App Store sandbox account in Settings, then tap Refresh receipt when prompted.',
+    );
   }
   return {
     productId: purchase.productId ?? env.iapProductId,
@@ -366,7 +398,7 @@ export const purchasePremium = async (
   };
 };
 
-export const restorePremium = async (): Promise<PurchaseShape | null> => {
+export async function restorePremium(): Promise<PurchaseShape | null> {
   if (!shouldUseNativeIap() || !env.iapProductId) {
     if (__DEV__) {
       console.log('[iap] falling back to mock restore (dev)');
@@ -390,7 +422,10 @@ export const restorePremium = async (): Promise<PurchaseShape | null> => {
     console.log('[iap] no matching purchase found during restore');
     return null;
   }
-  const receiptData = await fetchReceiptData(premiumPurchase);
+  let receiptData = await fetchReceiptData(premiumPurchase);
+  if (!receiptData) {
+    receiptData = await promptReceiptRefreshAndFetch();
+  }
   if (!receiptData) {
     throw new Error('Apple could not locate a receipt to restore. Try purchasing again.');
   }
@@ -400,4 +435,4 @@ export const restorePremium = async (): Promise<PurchaseShape | null> => {
     transactionDate: formatTransactionDate(premiumPurchase.transactionDate),
     receiptData,
   };
-};
+}
