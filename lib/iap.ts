@@ -54,6 +54,25 @@ const mapProductDetails = (
   currency: product.currency ?? null,
 });
 
+const purchaseMatchesPending = (purchase: RNIap.Purchase, target: PendingPurchase | null) => {
+  if (!target) return false;
+  if (purchase.productId === target.productId) return true;
+  const ids = (purchase as any).ids;
+  return Array.isArray(ids) ? ids.includes(target.productId) : false;
+};
+
+const isPurchaseComplete = (purchase: RNIap.Purchase) => {
+  const transactionState = (purchase as any).transactionState;
+  const hasReceipt = Boolean((purchase as any).transactionReceipt);
+  return (
+    purchase.purchaseState === 'purchased' ||
+    purchase.purchaseState === 'restored' ||
+    transactionState === 'purchased' ||
+    transactionState === 'restored' ||
+    (Platform.OS === 'ios' && hasReceipt)
+  );
+};
+
 const attachPurchaseListeners = () => {
   if (purchaseUpdateSubscription || purchaseErrorSubscription) return;
   console.log('[iap] attaching purchase listeners');
@@ -61,12 +80,17 @@ const attachPurchaseListeners = () => {
     console.log('[iap] purchaseUpdatedListener fired', {
       productId: purchase.productId,
       state: (purchase as any).purchaseState,
+      transactionState: (purchase as any).transactionState,
     });
-    if (
-      !pendingPurchase ||
-      purchase.productId !== pendingPurchase.productId ||
-      (purchase.purchaseState !== 'purchased' && purchase.purchaseState !== 'restored')
-    ) {
+    if (!purchaseMatchesPending(purchase, pendingPurchase)) {
+      return;
+    }
+    if (!isPurchaseComplete(purchase)) {
+      console.log('[iap] purchase update pending completion', {
+        purchaseState: purchase.purchaseState,
+        transactionState: (purchase as any).transactionState,
+        hasReceipt: Boolean((purchase as any).transactionReceipt),
+      });
       return;
     }
     settlePendingPurchase({ purchase });
@@ -161,9 +185,27 @@ const resolveTransactionId = (purchase: RNIap.Purchase) => {
   return null;
 };
 
-const fetchReceiptData = async (): Promise<string | null> => {
+const fetchReceiptData = async (purchase?: RNIap.Purchase): Promise<string | null> => {
   if (Platform.OS !== 'ios') return null;
-  // Always refresh to avoid stale/expired receipts during premium-set verification
+
+  const embeddedReceipt = (purchase as any)?.transactionReceipt;
+  if (typeof embeddedReceipt === 'string' && embeddedReceipt.length > 0) {
+    console.log('[iap] using transactionReceipt from purchase', { length: embeddedReceipt.length });
+    return embeddedReceipt;
+  }
+
+  try {
+    const receipt = await RNIap.getReceiptIOS();
+    if (receipt) {
+      console.log('[iap] getReceiptIOS success', { length: receipt.length });
+      return receipt;
+    }
+    console.log('[iap] getReceiptIOS returned null/empty');
+  } catch (error) {
+    console.warn('[iap] Unable to read Apple receipt', error);
+  }
+
+  // If there was no embedded receipt and none on disk, refresh once (may prompt Apple ID)
   try {
     console.log('[iap] requestReceiptRefreshIOS start');
     await RNIap.requestReceiptRefreshIOS();
@@ -175,10 +217,10 @@ const fetchReceiptData = async (): Promise<string | null> => {
   try {
     const receipt = await RNIap.getReceiptIOS();
     if (receipt) {
-      console.log('[iap] getReceiptIOS success', { length: receipt.length });
+      console.log('[iap] getReceiptIOS success after refresh', { length: receipt.length });
       return receipt;
     }
-    console.log('[iap] getReceiptIOS returned null/empty');
+    console.log('[iap] getReceiptIOS still empty after refresh');
     return null;
   } catch (error) {
     console.warn('[iap] Unable to read Apple receipt', error);
@@ -312,7 +354,7 @@ export const purchasePremium = async (
   });
   await RNIap.finishTransaction({ purchase, isConsumable: false });
   console.log('[iap] finishTransaction complete');
-  const receiptData = await fetchReceiptData();
+  const receiptData = await fetchReceiptData(purchase);
   if (!receiptData) {
     throw new Error('Apple did not return a receipt for this purchase. Please try again.');
   }
@@ -348,7 +390,7 @@ export const restorePremium = async (): Promise<PurchaseShape | null> => {
     console.log('[iap] no matching purchase found during restore');
     return null;
   }
-  const receiptData = await fetchReceiptData();
+  const receiptData = await fetchReceiptData(premiumPurchase);
   if (!receiptData) {
     throw new Error('Apple could not locate a receipt to restore. Try purchasing again.');
   }

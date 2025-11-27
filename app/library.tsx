@@ -6,6 +6,7 @@ import {
   Alert,
   FlatList,
   Image,
+  Linking,
   ListRenderItemInfo,
   Platform,
   Pressable,
@@ -17,6 +18,7 @@ import {
   View,
 } from 'react-native';
 
+import { PRIVACY_POLICY_URL, TERMS_OF_USE_URL } from '@/constants/policies';
 import { palette } from '@/constants/palette';
 import { getClampedAspectRatio } from '@/lib/aspect';
 import { env } from '@/lib/env';
@@ -231,6 +233,11 @@ function PremiumUpsell() {
   const upgradeLabel = productDetails?.displayPrice
     ? `Go Premium – ${productDetails.displayPrice}`
     : 'Go Premium';
+  const planName = productDetails?.title || 'DailyDraw Premium';
+  const subscriptionLengthLabel = 'Monthly auto-renewing subscription';
+  const pricePerMonth = productDetails?.displayPrice
+    ? `${productDetails.displayPrice} per month`
+    : null;
 
   useEffect(() => {
     let isMounted = true;
@@ -324,11 +331,27 @@ function PremiumUpsell() {
         <Text style={styles.cardBody}>• Search past posts by prompt, date, or difficulty.</Text>
         <Text style={styles.cardBody}>• Support ongoing prompt drops and moderation.</Text>
       </View>
-      {productDetails?.displayPrice && (
-        <Text style={styles.priceCopy}>
-          {productDetails.displayPrice} billed to your Apple ID (auto-renewing subscription).
+      <View style={styles.legalCard}>
+        <Text style={styles.cardTitle}>{planName}</Text>
+        <Text style={styles.cardBody}>{subscriptionLengthLabel}.</Text>
+        <Text style={styles.cardBody}>
+          {pricePerMonth
+            ? `Price: ${pricePerMonth}, billed to your Apple ID.`
+            : 'Pricing is shown on Apple’s confirmation sheet and billed to your Apple ID.'}
         </Text>
-      )}
+        <Text style={styles.cardBody}>
+          Manage or cancel anytime in Settings → Apple ID → Subscriptions.
+        </Text>
+        <View style={styles.linkRow}>
+          <Pressable onPress={() => Linking.openURL(PRIVACY_POLICY_URL)}>
+            <Text style={styles.linkText}>Privacy Policy</Text>
+          </Pressable>
+          <Text style={styles.linkDivider}>•</Text>
+          <Pressable onPress={() => Linking.openURL(TERMS_OF_USE_URL)}>
+            <Text style={styles.linkText}>Terms of Use (EULA)</Text>
+          </Pressable>
+        </View>
+      </View>
       <Pressable
         style={[styles.primaryButton, busy && styles.disabledButton]}
         onPress={handleUpgrade}
@@ -563,9 +586,26 @@ const styles = StyleSheet.create({
   cardBody: {
     color: '#4b5563',
   },
-  priceCopy: {
-    color: '#4b5563',
-    fontSize: 14,
+  legalCard: {
+    borderWidth: 1,
+    borderColor: palette.gray,
+    borderRadius: 16,
+    padding: 16,
+    gap: 8,
+    backgroundColor: '#fffef8',
+  },
+  linkRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  linkText: {
+    color: '#2563eb',
+    fontWeight: '600',
+  },
+  linkDivider: {
+    color: '#9ca3af',
   },
   primaryButton: {
     borderRadius: 14,

@@ -110,3 +110,8 @@ Use this flow whenever you need to validate IAP before shipping a build for revi
 
 8. **Promote the build**  
    - Once sandbox QA passes, move the same TestFlight build into the App Store review submission. No new build is needed as long as no code changes occur between QA and submission.
+
+## App Store Connect metadata checklist
+- Privacy Policy URL: `https://righteous-seashore-4be.notion.site/DailyDrawings-Privacy-Policy-2ace09062a36804c9ab1c76d54ba1aa3` (Privacy Policy field).  
+- Terms of Use (EULA): `https://righteous-seashore-4be.notion.site/DailyDrawings-Terms-of-Use-Community-Guidelines-2ace09062a368097bec1cf9c96400b2a` (add to the App Description or EULA field).  
+- In the App Description, mention the subscription title, renewal length (monthly), and price per period to match the in-app copy.

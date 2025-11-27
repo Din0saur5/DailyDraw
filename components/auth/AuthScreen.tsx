@@ -1,3 +1,4 @@
+import { PRIVACY_POLICY_URL, TERMS_OF_USE_URL } from '@/constants/policies';
 import { palette } from '@/constants/palette';
 import { supabase } from '@/lib/supabase';
 import * as Linking from 'expo-linking';
@@ -23,10 +24,6 @@ type Props = {
 };
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const PRIVACY_POLICY_URL =
-  'https://righteous-seashore-4be.notion.site/DailyDrawings-Privacy-Policy-2ace09062a36804c9ab1c76d54ba1aa3';
-const TERMS_OF_USE_URL =
-  'https://righteous-seashore-4be.notion.site/DailyDrawings-Terms-of-Use-Community-Guidelines-2ace09062a368097bec1cf9c96400b2a';
 
 export function AuthScreen({ allowDevBypass, onDevBypass }: Props) {
   const [mode, setMode] = useState<AuthMode>('signIn');
